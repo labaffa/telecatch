@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+
+    <!-- HEAD -->
+    <head>
+        <title>TeleDash</title> <!-- may want to replace with jinja variable pulled through? -->
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+        <link rel="stylesheet/less" type="text/css" href="{{ url_for('static', path='/css/style.less') }}">
+        <script src="https://cdn.jsdelivr.net/npm/less" ></script>
+        <!-- Specify body min-height to fill the page if not full already -->
+        <style>
+            body {
+                min-height: 100vh;
+                min-height: -webkit-fill-available;
+            }
+        </style>
+    </head>
+
+    <!-- Body of the webpage -->
+    <body class="d-flex flex-column">
+        <div class="cntr">
+            <div class="cntr-innr">
+                <label class="search" for="inpt_search">
+                        <input id="inpt_search" type="text" />
+                </label>
+                <p>Search on Telegram</p>
+            </div>
+            <div class="cntr-limit">
+                <label class="limit" for="inpt_limit">
+                        <input id="inpt_limit" type="number" min="1" max="10000"/>
+                    </label>
+                    <p>Max messages (1-1000)</p>
+            </div>
+            <div class="cntr-submit">
+                <button class="tg-button" id="submitButton">Submit</button>
+                <p style="visibility: hidden;">placeholder</p>
+            </div>
+        </div>
+        <div class="results">
+            <table id="results-table" class="tg-messages">
+                <thead>
+                    <tr>
+                        <th>Channel</th>
+                        <th>Message</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
+        <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+        <script src="{{ url_for('static', path='/js/main.js' ) }}"></script>
+    </body>
+    
+</html>
