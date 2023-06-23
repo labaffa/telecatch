@@ -1,4 +1,3 @@
-import asyncio
 import json
 from datetime import date, datetime
 from dotenv import load_dotenv
@@ -9,9 +8,14 @@ from telethon.tl.types import (
     PeerChannel, InputMessagesFilterEmpty
 )
 import os
-
+from inspect import getsourcefile
 
 load_dotenv()
+
+this_path = os.path.abspath(getsourcefile(lambda:0))
+this_folder = os.path.dirname(this_path)
+repo_folder = os.path.dirname(os.path.dirname(this_folder))
+SOURCE_FOLDER = os.path.dirname(this_folder)
 
 
 # some functions to parse json date
@@ -33,7 +37,7 @@ API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
 PHONE = os.getenv("PHONE")
 USERNAME = os.getenv("USERNAME")
-tg_client = TelegramClient(USERNAME, API_ID, API_HASH)
+tg_client = TelegramClient(f'{this_folder}/{USERNAME}', API_ID, API_HASH)
 
 ALL_CHANNELS = [
      x.strip(" \n") for x in open("./teledash/channels.txt", "r").readlines() if x.strip(" \n")
