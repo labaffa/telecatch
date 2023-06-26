@@ -30,8 +30,6 @@ class DateTimeEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 
-
-
 # Setting configuration values
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
@@ -73,7 +71,8 @@ async def search_channel_raw(client, channel, search):
             break
         messages = history.messages
         for message in messages:
-            all_messages.append(message.to_dict())
+            message = message.to_dict()
+            all_messages.append(message)
         offset_id = messages[len(messages) - 1].id
         total_messages = len(all_messages)
         if total_count_limit != 0 and total_messages >= total_count_limit:
@@ -100,7 +99,9 @@ async def search_single_channel_batch(client, channel, search, limit=100, offset
     all_messages = []
     async for message in client.iter_messages(
         channel, search=search, limit=limit, offset_id=offset_id):
-        all_messages.append(message.to_dict())
+        message = message.to_dict()
+        message["peer_id"]["channel_url"] = channel
+        all_messages.append(message)
     return all_messages
 
 
