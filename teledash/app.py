@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from teledash.channel_messages import tg_client, search_all_channels
 import base64
+from teledash.config import ALL_CHANNELS
 
 
 app = FastAPI(
@@ -30,7 +31,7 @@ tg_client.start()
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def home(request: Request):
-    data = {"request": request}
+    data = {"request": request, "all_channels": ALL_CHANNELS}
     return templates.TemplateResponse(
         "index.html",
         data
