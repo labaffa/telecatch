@@ -38,6 +38,7 @@ $('#submitButton').on("click", function() {
       limit = 1000;
     } */
     // Chiamata all'API con il valore dell'input
+    window.tableMessages = [];
     callAPI(search, 40, 0, 0);
   });
 
