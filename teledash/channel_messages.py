@@ -1,21 +1,19 @@
 import json
 from datetime import date, datetime
-from dotenv import load_dotenv
-from telethon import TelegramClient
-from telethon.errors import SessionPasswordNeededError
-from telethon.tl.functions.messages import (GetHistoryRequest, SearchRequest)
+from telethon import functions
+from telethon.tl.functions.messages import (
+    GetHistoryRequest, SearchRequest)
 from telethon.tl.types import (
     PeerChannel, InputMessagesFilterEmpty
 )
 import os
-from inspect import getsourcefile
+from teledash import config, models
+from tinydb import Query
+import datetime as dt
+import pytz
 
-load_dotenv()
 
-this_path = os.path.abspath(getsourcefile(lambda:0))
-this_folder = os.path.dirname(this_path)
-repo_folder = os.path.dirname(os.path.dirname(this_folder))
-SOURCE_FOLDER = os.path.dirname(this_folder)
+Channel = Query()
 
 
 # some functions to parse json date
@@ -28,22 +26,6 @@ class DateTimeEncoder(json.JSONEncoder):
             return list(o)
 
         return json.JSONEncoder.default(self, o)
-
-
-# Setting configuration values
-API_ID = os.getenv("API_ID")
-API_HASH = os.getenv("API_HASH")
-PHONE = os.getenv("PHONE")
-USERNAME = os.getenv("USERNAME")
-tg_client = TelegramClient(f'{this_folder}/{USERNAME}', API_ID, API_HASH)
-
-ALL_CHANNELS = [
-     x.strip(" \n") for x in open("./teledash/channels.txt", "r").readlines() if x.strip(" \n")
-]
-
-# Create the client and connect
-# client = TelegramClient(username, api_id, api_hash)
-
 
 
 async def search_channel_raw(client, channel, search):
@@ -80,54 +62,130 @@ async def search_channel_raw(client, channel, search):
     return all_messages
 
 
-async def create_client():
-    # Create the client and connect
-    client = TelegramClient(USERNAME, API_ID, API_HASH)
-
-    await client.start()
-    print("Client created")
-    if await client.is_user_authorized() == False:
-        await client.send_code_request(PHONE)
-        try:
-            await client.sign_in(PHONE, input('Enter the code: '))
-        except SessionPasswordNeededError:
-            await client.sign_in(password=input('Password: '))
-    return client
-
-
-async def search_single_channel_batch(client, channel, search, limit=100, offset_id=0):
+async def search_single_channel_batch(
+    client, channel, search, 
+    start_date: dt.datetime=None, 
+    end_date: dt.datetime=None,
+    limit: int=100, 
+    offset_id: int=0
+):
     all_messages = []
-    async for message in client.iter_messages(
-        channel, search=search, limit=limit, offset_id=offset_id):
-        message = message.to_dict()
-        message["peer_id"]["channel_url"] = channel
-        all_messages.append(message)
+    try:
+        channel_info = config.db.table("channels").search(
+            Channel.identifier == channel)[0]
+    except IndexError:
+        channel_info = await build_chat_info(
+            client, channel)
+        config.db.table("channels").insert(channel_info)
+    async with client:
+        async for message in client.iter_messages(
+            channel, 
+            search=search, 
+            limit=limit, 
+            offset_id=offset_id,
+            offset_date=end_date
+            ):
+            message = message.to_dict()
+            if start_date and message["date"] < start_date.replace(tzinfo=pytz.UTC):
+                break
+            message["peer_id"]["channel_url"] = channel
+            message["chat_type"] = channel_info["type"]
+            message["country"] = channel_info.get("country")
+            all_messages.append(message)
     return all_messages
 
 
-async def search_all_channels(client, search, limit=100, offset_channel=0, offset_id=0):
+async def search_all_channels(
+    client, search, 
+    start_date: dt.datetime=None, 
+    end_date: dt.datetime=None,
+    chat_type: str=None, country: str=None, 
+    limit: int=100, 
+    offset_channel: int=0, offset_id: int=0
+):
+    if not chat_type:
+        chat_type = None
+    if limit < 0:
+        limit = None
     all_msg = []
     total_msg_count = 0
     channel_limit = limit
-    for channel in ALL_CHANNELS[offset_channel:]:
+    for channel in config.ALL_CHANNELS[offset_channel:]:
+        try:
+            channel_info = config.db.table("channels").search(
+            Channel.identifier == channel)[0]
+        except IndexError:
+            channel_info = await build_chat_info(
+            client, channel)
+            config.db.table("channels").insert(channel_info)
+        if (chat_type is not None) and (channel_info["type"] != chat_type):
+            continue
         channel_msg = await search_single_channel_batch(
-            client, channel, search, channel_limit, offset_id)
+            client, channel, search, 
+            start_date, end_date,
+            channel_limit, 
+            offset_id)
         total_msg_count += len(channel_msg)
-        channel_limit = limit - total_msg_count
+        offset_id = 0
         all_msg.extend(channel_msg)
-        if total_msg_count >= limit:
-            break
+        if (limit is not None):
+            channel_limit = limit - total_msg_count
+            if (total_msg_count >= limit):
+                break
     return all_msg
 
 
-async def main():
-    client = await create_client()
-    user_input_search = input('enter search word(string):')
-    all_messages = await search_all_channels(client, user_input_search)
-    with open('channel_messages.json', 'w') as outfile:
-        json.dump(all_messages, outfile, cls=DateTimeEncoder)
+async def get_channel_or_megagroup(client, channel):
+    async with client:
+        ch = await client.get_input_entity(channel)
+        cha = await client(functions.channels.GetFullChannelRequest(
+        channel=ch
+    ))
+    return cha.to_dict()
 
 
-if __name__ == "__main__":
-    with tg_client:
-        tg_client.loop.run_until_complete(main())
+async def count_peer_messages(client, peer):
+    async with client:
+        ch = await client.get_input_entity(peer)
+        cha = await client(functions.messages.GetHistoryRequest(
+            peer=ch, limit=1,
+            offset_id=0, 
+            offset_date=None, 
+            add_offset=0, 
+            max_id=0, 
+            min_id=0,
+            hash=0
+        ))
+    msg_count = cha.to_dict()["count"]
+    config.db.table("channels").update(
+        {"count": msg_count}, Channel.identifier == peer
+    )
+    return config.db.table("channels").search(
+        Channel.identifier == peer
+    )
+
+
+async def build_chat_info(tg_client, channel):
+    full_channel = await get_channel_or_megagroup(
+        tg_client, channel
+    )
+    async with config.tg_client:
+        await config.tg_client(
+            functions.channels.JoinChannelRequest(channel))
+    chat = full_channel["chats"][0]
+    ts = str(dt.datetime.utcnow())
+    ch_type = "group" if (
+        chat["megagroup"] or chat["gigagroup"]) else "channel"
+    record = {
+        "identifier": channel,
+        "id": full_channel["full_chat"]["id"],
+        "about": full_channel["full_chat"]["about"],
+        "title": chat["title"],
+        "participants_counts": full_channel["full_chat"][
+            "participants_count"
+        ],
+        "type": ch_type,
+        "inserted_at": ts,
+        "updated_at": ts
+    }
+    return record
