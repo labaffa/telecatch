@@ -64,7 +64,8 @@ body{background:@bg-color;font:13px monospace;color:@txt-color!important}p{margi
 	display: inline-block;
 	position: relative;
 	height: 35px;
-	width: 35px;
+	//width: 35px;
+	
 	box-sizing: border-box;
 	margin: 0px 8px 7px 0px;
 	padding: 7px 9px 0px 9px;
@@ -72,8 +73,10 @@ body{background:@bg-color;font:13px monospace;color:@txt-color!important}p{margi
 	border-radius: 25px;
 	transition: all 200ms ease;
 	cursor: text;
-	
-	&:after {
+	width: 200px;
+	margin-right: 0px;
+	border-radius: 0;
+	/* &:after {
 		content: "";
 		position: absolute;
 		width: 3px;
@@ -94,7 +97,7 @@ body{background:@bg-color;font:13px monospace;color:@txt-color!important}p{margi
 		&:after {
 			height: 0px;	
 		}
-	}
+	} */
 	
 	input {
 		width: 100%;
@@ -165,13 +168,88 @@ body{background:@bg-color;font:13px monospace;color:@txt-color!important}p{margi
   }
 	  
 
-.container {
+/* .container {
 	display: flex;
-	justify-content: center; /* Allinea gli elementi lungo l'asse orizzontale al centro */
-	align-items: center; /* Allinea gli elementi lungo l'asse verticale al centro */
+	justify-content: center; 
+	align-items: center; 
 
-  }
+} */
 
   .centered {
 	text-align: center; /* Allinea il testo all'interno dello span al centro */
   }
+
+.cntr, .monitor  {
+	flex: 1;
+	display: flex;
+}
+
+label {
+	display: block;
+}
+
+.cntr-box, .cntr-ele, .info-badge{
+	padding: 10px;
+}
+
+.d-flex {
+	display: flex;
+}
+
+.nowrap {
+	flex-wrap: nowrap;
+}
+
+.flex-column {
+	flex-direction: column;
+}
+
+.control {
+	flex: 2;
+	border: 1px solid #FFFFFF;
+}
+
+.monitor {
+	flex: 1;
+	border: 1px solid #FFFFFF;
+	justify-content: space-around;
+	
+	select {
+		min-height: 30px;
+	}
+}
+
+select {
+	max-width: 250px;
+	
+}
+
+.actions {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-top: 40px;
+	
+}
+
+.cloche {
+	padding: 20px;
+}
+
+.inputs {
+	display: flex;
+	justify-content: space-between;
+}
+
+.search-box {
+	margin: 30px;
+	padding: 20px;
+}
+
+.cntr-export {
+	padding: 20px;
+}
+
+.justify-content-center{
+	justify-content: center;
+}
