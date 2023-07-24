@@ -19,7 +19,7 @@ $("#inpt_search").on('blur', function () {
 });
 
 
-$('#submitButton').on("click", function() {
+$('#submitButton').on("click", async function() {
     $('#results-table').attr('data-page', 1);
     let search = $('#inpt_search').val();
     let start_date = $('#start-date').val();
@@ -27,24 +27,29 @@ $('#submitButton').on("click", function() {
     let chat_type = $('#chat-type').val();
     let country = null;
     let data_range = $('#data-range').val();
+    let export_format = $('#export-format').val();
 
     window.search = search;
     window.start_date = start_date || null;
     window.end_date = end_date || null;
     window.chat_type = chat_type;
     window.country = country;
-    window.data_range = data_range;
-    window.limit = parseInt(window.data_range) ? -1 : 40;
-
+    window.data_range = parseInt(data_range);
+    window.limit = window.data_range ? -1 : 40;
+    window.export_format = export_format;
     /* let limit = parseInt($('#inpt_limit').val(), 10) || 100;
     if (limit > 1000){
       limit = 1000;
     } */
     // Chiamata all'API con il valore dell'input
     window.tableMessages = [];
-    callAPI(search, window.limit, 0, 0, 
-      window.start_date, window.end_date, 
-      window.chat_type, window.country);
+    if (!window.data_range){
+      callAPI(search, window.limit, 0, 0, 
+        window.start_date, window.end_date, 
+        window.chat_type, window.country);
+    } else {
+      await export_search();
+    }
   });
 
 /* const submitButton = document.getElementById("submitButton");
@@ -168,8 +173,6 @@ function showRows(pageNumber, tableSelector, rowsPerPage=10) {
   }
 
 
-
-
 // Gestisci il click sui link di paginazione
 $('#page-up').click(function(e) {
     e.preventDefault();
@@ -200,7 +203,7 @@ $('#page-dw').click(function(e) {
   }
 
 
-$('#export-messages').click(function(e){
+/* $('#export-messages').click(function(e){
   var myTableArray = [];
   var keys = [
     "username", "message", "timestamp", 
@@ -217,7 +220,6 @@ $('#export-messages').click(function(e){
           
         myTableArray.push(objectOfThisRow);
     }});
-  console.log(myTableArray);
   fetch('/api/export_to_csv', {
     method: 'POST',
     headers: {
@@ -243,14 +245,108 @@ $('#export-messages').click(function(e){
     a.remove(); // afterwards, remove the element  
   });
 
+}); */
+
+async function export_search(){
+  var params = { 
+    search: window.search, 
+    start_date: window.start_date,
+    end_date: window.end_date,
+    chat_type: window.chat_type,
+    country: window.country,
+    limit: -1,
+    offset_channel: 0,
+    offset_id: 0,
+    out_format: window.export_format
+  };
+  var url = new URL('/api/stream_search', window.location.origin);
+  url.search = new URLSearchParams(params).toString();
+  
+  fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+    }
+  }).then(res => {
+    const disposition = res.headers.get('Content-Disposition');
+    filename = disposition.split(/;(.+)/)[1].split(/=(.+)/)[1];
+    if (filename.toLowerCase().startsWith("utf-8''"))
+        filename = decodeURIComponent(filename.replace("utf-8''", ''));
+    else
+        filename = filename.replace(/['"]/g, '');
+    const fileStream = streamSaver.createWriteStream(filename)
+    // more optimized
+    /* if (window.WritableStream && readableStream.pipeTo) {
+      return readableStream.pipeTo(fileStream)
+        .then(() => console.log('done writing'))
+    } */
+
+    window.writer = fileStream.getWriter()
+
+    const reader = res.body.getReader()
+    const pump = () => reader.read()
+      .then(res => res.done
+        ? writer.close()
+        : writer.write(res.value).then(pump))
+
+    pump()
+  })};
+
+
+
+$('#export-messages').click(function(e){
+
+  var params = { 
+    search: window.search, 
+    start_date: window.start_date,
+    end_date: window.end_date,
+    chat_type: window.chat_type,
+    country: window.country,
+    limit: -1,
+    offset_channel: 0,
+    offset_id: 0,
+    out_format: window.export_format
+  };
+  var url = new URL('/api/stream_search', window.location.origin);
+  url.search = new URLSearchParams(params).toString();
+  
+  fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+    }
+  }).then(res => {
+    const disposition = res.headers.get('Content-Disposition');
+    filename = disposition.split(/;(.+)/)[1].split(/=(.+)/)[1];
+    if (filename.toLowerCase().startsWith("utf-8''"))
+        filename = decodeURIComponent(filename.replace("utf-8''", ''));
+    else
+        filename = filename.replace(/['"]/g, '');
+    const fileStream = streamSaver.createWriteStream(filename)
+    // more optimized
+    /* if (window.WritableStream && readableStream.pipeTo) {
+      return readableStream.pipeTo(fileStream)
+        .then(() => console.log('done writing'))
+    } */
+
+    window.writer = fileStream.getWriter()
+
+    const reader = res.body.getReader()
+    const pump = () => reader.read()
+      .then(res => res.done
+        ? writer.close()
+        : writer.write(res.value).then(pump))
+
+    pump()
+  })
 });
-
-
 
 async function fillChatInfo(eleId, chatType){
   
   let select = $(eleId);
-  
+  select.empty();
     let count = window.channelsInfo.meta[`${chatType}_count`]
     let header = (chatType == "channel") ? 'Channels' : "Groups"
     select.append(
@@ -274,6 +370,7 @@ async function fillChatInfo(eleId, chatType){
 
 async function fillMsgCounts(eleId){
   let select = $(eleId);
+  select.empty();
   let totalCount = window.channelsInfo.meta.msg_count;
   select.append(
     $('<option>', {
@@ -295,6 +392,7 @@ async function fillMsgCounts(eleId){
 
 async function fillPtsCounts(eleId){
   let select = $(eleId);
+  select.empty();
   let totalCount = window.channelsInfo.meta.participant_count;
   select.append(
     $('<option>', {
@@ -312,24 +410,114 @@ async function fillPtsCounts(eleId){
     });
 };
 
+async function updateMonitor(){
+  fetch(`/api/channels_info`, 
+      {
+          headers: {'Cache-Control': 'no-cache'}
+      }
+      ).then(response => response.json()
+      ).then(data => {
+        window.channelsInfo = data;
+        fillChatInfo('#channels', 'channel');
+        fillChatInfo('#groups', 'group');
+        fillMsgCounts('#counts');
+        fillPtsCounts('#participants');
+  })
+  console.log("monitor updated")
+};
+  
+
+$('#add-chat-btn').click(function(e){
+  
+  let identifier = $('#add-chat').val();
+  var resp_ok;
+    fetch('/api/channel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      //body: JSON.stringify(window.tableMessages)
+      body: JSON.stringify({
+        "identifier": identifier
+      })
+    })
+    .then( (response) => {
+      resp_ok = response.ok;
+      return response.json();
+      
+    })
+    .then( (data) => {
+      if (resp_ok) {
+        fetch('/api/chat_message_count', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            "identifier": identifier
+          })
+        })
+        .then( (count_resp) => {
+          updateMonitor();
+          return data;
+        }
+
+        )
+      
+      }
+      else {
+        throw new Error(data.detail);
+      }
+    })
+    .catch( (error) => {
+      console.log(error)
+      alert(error)
+    })
+  }
+);
+
+
+$('#remove-chat-btn').click(function(e){
+  
+  let identifier = $('#remove-chat').val();
+  var resp_ok;
+    fetch('/api/channel', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      //body: JSON.stringify(window.tableMessages)
+      body: JSON.stringify({
+        "identifier": identifier
+      })
+    })
+    .then( (response) => {
+      resp_ok = response.ok;
+      return response.json();
+      
+    })
+    .then( (data) => {
+      if (resp_ok) {
+        updateMonitor();
+        return data;
+      }
+      else {
+        throw new Error(data.detail);
+      }
+    })
+    .catch( (error) => {
+      console.log(error)
+      alert(error)
+    })
+  }
+);
 
 $(document).ready(function() {
   // Inizializza la paginazione
   // generatePagination(tableSelector, paginationSelector, 1, rowsPerPage);
   // showRows(1, tableSelector, rowsPerPage);
   createEmptyTable(rowsPerPage);
-  fetch(`/api/channels_info`, 
-            {
-                headers: {'Cache-Control': 'no-cache'}
-            }
-      ).then(response => response.json()
-      ).then(data => {
-                window.channelsInfo = data;
-                fillChatInfo('#channels', 'channel');
-                fillChatInfo('#groups', 'group');
-                fillMsgCounts('#counts');
-                fillPtsCounts('#participants');
-        })
-  
+  updateMonitor();
+  window.setInterval(updateMonitor, 60*60*1000);
   
 });
