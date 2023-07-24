@@ -274,14 +274,13 @@ async def load_default_channels_in_db(
 TIME_INTERVAL_IN_SEC = 60*60
 
 
-async def count_messages(
-    client
-):
+async def count_messages(client):
     while True:
         all_channels = config.db.table("channels").all()
+        
         for channel in all_channels:
             await count_peer_messages(
-                client, channel
+                client, channel["identifier"]
             )
             print(channel)
             await asyncio.sleep(0.3)
