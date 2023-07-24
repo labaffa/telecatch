@@ -13,7 +13,7 @@ this_folder = os.path.dirname(this_path)
 repo_folder = os.path.dirname(os.path.dirname(this_folder))
 SOURCE_FOLDER = os.path.dirname(this_folder)
 
-ALL_CHANNELS = [
+DEFAULT_CHANNELS = [
      x.strip(" \n") for x in open(os.path.join(this_folder, "channels.txt"), "r").readlines() if x.strip(" \n")
 ]
 
@@ -21,6 +21,7 @@ db = TinyDB(
     os.path.join(this_folder, 'sessions/db.json')
 )
 channels_table = db.table("channels")
+
 
 # Setting configuration values
 API_ID = os.getenv("API_ID")
