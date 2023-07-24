@@ -53,8 +53,15 @@
                             <div class="cntr-ele">
                                 <label for="data-range">Scraping method:</label>
                                 <select name="data-range" id="data-range">
-                                    <option value=0>Chunks</option>
-                                    <option value=1>All (be cautious)</option>
+                                    <option value=0>Show on table</option>
+                                    <option value=1>Export</option>
+                                </select>
+                            </div>
+                            <div class="cntr-ele">
+                                <label for="export-format">Export format:</label>
+                                <select name="export-format" id="export-format">
+                                    <option value="csv">CSV</option>
+                                    <option value="json">JSON</option>
                                 </select>
                             </div>
                         </div>
@@ -74,18 +81,33 @@
                 </div>
                 
             </div>
-            <div class="monitor d-flex flex-column">
-                <div class="info-badge">
-                    <select name="channels" id="channels"></select>
+
+            <div class="monitor d-flex" >
+                <div class="flex-column">
+                    <div class="info-badge">
+                        <select name="channels" id="channels"></select>
+                    </div>
+                    <div class="info-badge">
+                        <select name="groups" id="groups"></select>
+                    </div>
+                    <div class="info-badge">
+                        <select name="counts" id="counts"></select>
+                    </div>
+                    <div class="info-badge">
+                        <select name="participants" id="participants"></select>
+                    </div>
                 </div>
-                <div class="info-badge">
-                    <select name="groups" id="groups"></select>
-                </div>
-                <div class="info-badge">
-                    <select name="counts" id="counts"></select>
-                </div>
-                <div class="info-badge">
-                    <select name="participants" id="participants"></select>
+                <div>
+                    <div class="cntr-ele">
+                        <label for="add-chat">Add channel or group:</label>
+                        <input type="text" id="add-chat" placeholder="[url or username]">
+                        <input type="submit" value="Add" id="add-chat-btn">
+                    </div>
+                    <div class="cntr-ele">
+                        <label for="remove-chat">Remove channel or group:</label>
+                        <input type="text" id="remove-chat" placeholder="[url]">
+                        <input type="submit" value="Remove" id="remove-chat-btn">
+                    </div>
                 </div>
             </div>
         </div>
@@ -94,7 +116,7 @@
                 <h1> Results </h1>
             </div>
             <div class="cntr-export">
-                <a href="#"  id="export-messages">Export messages to CSV</a>
+                <a href="#"  id="export-messages">Export messages</a>
                 <!-- <p style="visibility: hidden;">placeholder</p> -->
             </div>
             <table id="results-table" data-page="1" class="tg-messages">
@@ -122,6 +144,8 @@
         </script>
         <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/web-streams-polyfill@2.0.2/dist/ponyfill.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
         <script src="{{ url_for('static', path='/js/main.js' ) }}"></script>
     </body>
     
