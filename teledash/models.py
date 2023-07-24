@@ -34,6 +34,6 @@ class Message(BaseModel):
     message: str
     timestamp: str
     type: str
-    country: str
-    views: StringInt
+    country: Union[str, None]
+    views: Union[StringInt, None]
 
