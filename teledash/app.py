@@ -9,9 +9,10 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from teledash.channel_messages import search_all_channels, \
     count_peer_messages, get_channel_or_megagroup, \
-    build_chat_info
+    build_chat_info, search_all_channels_generator, \
+    load_default_channels_in_db, count_messages
 import base64
-from teledash.config import ALL_CHANNELS
+from teledash.config import DEFAULT_CHANNELS
 from typing import Union
 from teledash import models
 from teledash import config
@@ -23,8 +24,10 @@ import io
 import pandas as pd
 from dateutil.parser import parse
 import json
-import unicodedata
 import asyncio
+import io
+import csv
+from tinydb import Query
 
 
 def validate_date(v):
@@ -57,25 +60,11 @@ templates = Jinja2Templates(directory="teledash/templates")
 tg_client.start()
 
 
-TIME_INTERVAL_IN_SEC = 60*60*2
-
-
-async def count_messages():
-    while True:
-        for channel in ALL_CHANNELS:
-            print(channel)
-            await count_peer_messages(
-                tg_client, channel
-            )
-            await asyncio.sleep(0.3)
-            # async GET requests
-            # async update DB
-        await asyncio.sleep(TIME_INTERVAL_IN_SEC)
-
-
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(count_messages())
+    await load_default_channels_in_db(tg_client)
+    asyncio.create_task(count_messages(tg_client))
+    pass
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -89,7 +78,7 @@ async def home(request: Request):
     }
     data = {
         "request": request, 
-        "all_channels": ALL_CHANNELS,
+        "all_channels": config.DEFAULT_CHANNELS,
         "channels_info": {"meta": ch_meta, "data": channels}
         }
     return templates.TemplateResponse(
@@ -131,27 +120,6 @@ async def read_get_channel(channel: Union[str, int]):
         response, custom_encoder={
         bytes: lambda v: base64.b64encode(v).decode('utf-8')}))
    
-
-@app.post("/api/channel", response_model=models.Channel)
-async def add_channel(channel: models.ChannelCreate):
-    from tinydb import Query
-
-    channels = config.db.table("channels")
-    Ch = Query()
-    async with config.tg_client:
-        entity = await config.tg_client.get_input_entity(
-            channel.identifier)
-    channel_in_db = channels.search(Ch.id == entity.channel_id)
-    if channel_in_db:
-        raise HTTPException(
-            status_code=400, detail="Channel is registered"
-        )
-    
-    record = await build_chat_info(
-        tg_client, channel.identifier)
-    channels.insert(record)
-    return models.Channel(**record)
-
 
 @app.get("/api/channels_info")
 async def info_of_channels_and_groups():
@@ -197,11 +165,73 @@ async def get_csv(
     )
 
 
+@app.get("/api/stream_search")
+async def search_and_export_messages_to_csv(
+    search, 
+    start_date: StrictDate=None,
+    end_date: StrictDate=None,
+    chat_type: Union[str, None]=None,
+    country: Union[str, None]=None,
+    limit: int=100, 
+    offset_channel: int=0, 
+    offset_id: int=0,
+    out_format: Union[str, None]=None
+):
+    headers = {}
+    if (out_format == "csv") or (out_format == "json"):
+        fext = ".csv" if out_format == "csv" else ".json"
+        headers = {
+            'Access-Control-Expose-Headers': 'Content-Disposition',
+            'Content-Disposition': f'attachment; filename="export{fext}"'
+        }
+    
+    results = search_all_channels_generator(
+            tg_client, 
+            search,
+            start_date,
+            end_date,
+            chat_type,
+            country,
+            limit,
+            offset_channel,
+            offset_id
+        )
+    
+    async def _encoded_results():
+        fieldnames = models.Message.__fields__.keys()
+        stream = io.StringIO()
+        writer = csv.DictWriter(stream, fieldnames=fieldnames)
+        if out_format == "csv":
+            writer.writeheader()
+            yield stream.getvalue()
+            async for item in results:
+                stream.truncate(0)
+                stream.seek(0)
+                writer.writerow(item)
+                yield stream.getvalue()
+        elif out_format =="json":
+            idx = 0
+            yield "["
+            async for item in results:
+                if idx > 0:
+                    yield ","
+                yield json.dumps(
+                    jsonable_encoder(models.Message(**item).dict())
+                )
+                idx += 1
+            yield "]"
+    return StreamingResponse(
+        content=_encoded_results(),
+        media_type='text/event-stream',
+        headers=headers
+    )
+
+
 @app.put("/api/chat_message_count")
 async def update_number_of_messages_in_chat(
-    chat: str):
+    chat: models.ChannelCreate):
     response = await count_peer_messages(
-        tg_client, chat
+        tg_client, chat.identifier
     )
     return JSONResponse(content=jsonable_encoder(
         response, custom_encoder={
@@ -209,18 +239,43 @@ async def update_number_of_messages_in_chat(
     )
 
 
+@app.post("/api/channel", response_model=models.Channel)
+async def add_channel(channel: models.ChannelCreate):
+    
+    channels = config.db.table("channels")
+    Ch = Query()
+    async with config.tg_client:
+        try:
+            entity = await config.tg_client.get_input_entity(
+                channel.identifier)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    channel_in_db = channels.search(Ch.id == entity.channel_id)
+    if channel_in_db:
+        raise HTTPException(
+            status_code=400, detail="Channel is registered"
+        )
+    
+    record = await build_chat_info(
+        tg_client, channel.identifier)
+    channels.insert(record)
+    return models.Channel(**record)
+
+
 @app.delete("/api/channel", response_model=models.Channel)
-async def delete_channel_from_db(
-    channel: models.ChannelCreate
-):
-    from tinydb import Query
+async def delete_channel_from_db(channel: models.ChannelCreate):
 
     channels = config.db.table("channels")
     Ch = Query()
     async with config.tg_client:
-        entity = await config.tg_client.get_input_entity(
-            channel.identifier
-        )
+        try:
+            entity = await config.tg_client.get_input_entity(
+                channel.identifier
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, detail=str(e)
+            )
     channel_in_db = channels.search(Ch.id == entity.channel_id)
     if not channel_in_db:
         raise HTTPException(

@@ -11,6 +11,7 @@ from teledash import config, models
 from tinydb import Query
 import datetime as dt
 import pytz
+import asyncio
 
 
 Channel = Query()
@@ -26,6 +27,17 @@ class DateTimeEncoder(json.JSONEncoder):
             return list(o)
 
         return json.JSONEncoder.default(self, o)
+
+
+def parse_raw_message(message):
+    return {
+        "username": message["peer_id"]["channel_url"],
+        "message": message["message"],
+        "timestamp": message["date"].isoformat(),
+        "type": message["chat_type"],
+        "country": message.get("country"),
+        "views": message.get("views", 0)
+    }
 
 
 async def search_channel_raw(client, channel, search):
@@ -110,7 +122,12 @@ async def search_all_channels(
     all_msg = []
     total_msg_count = 0
     channel_limit = limit
-    for channel in config.ALL_CHANNELS[offset_channel:]:
+    all_channels_id = [
+        channel["identifier"]
+
+        for channel in config.db.table("channels").all()
+    ]
+    for channel in all_channels_id[offset_channel:]:
         try:
             channel_info = config.db.table("channels").search(
             Channel.identifier == channel)[0]
@@ -134,6 +151,53 @@ async def search_all_channels(
                 break
     return all_msg
 
+
+async def search_all_channels_generator(
+    client, search, 
+    start_date: dt.datetime=None, 
+    end_date: dt.datetime=None,
+    chat_type: str=None, country: str=None, 
+    limit: int=100, 
+    offset_channel: int=0, 
+    offset_id: int=0
+):  
+    if not chat_type:
+        chat_type = None
+    if limit < 0:
+        limit = None
+    all_channels_id = [
+        channel["identifier"]
+
+        for channel in config.db.table("channels").all()
+    ]
+    for channel in all_channels_id[offset_channel:]:
+        try:
+            channel_info = config.db.table("channels").search(
+            Channel.identifier == channel)[0]
+        except IndexError:
+            channel_info = await build_chat_info(
+            client, channel)
+            config.db.table("channels").insert(channel_info)
+        if (chat_type is not None) and (channel_info["type"] != chat_type):
+            continue
+        async with client:
+            async for message in client.iter_messages(
+                channel, 
+                search=search, 
+                limit=limit, 
+                offset_id=offset_id,
+                offset_date=end_date
+            ):
+                message = message.to_dict()
+                if message["_"] != "Message":
+                    continue
+                if start_date and message["date"] < start_date.replace(tzinfo=pytz.UTC):
+                    break
+                message["peer_id"]["channel_url"] = channel
+                message["chat_type"] = channel_info["type"]
+                message["country"] = channel_info.get("country")
+                yield parse_raw_message(message)
+            
 
 async def get_channel_or_megagroup(client, channel):
     async with client:
@@ -189,3 +253,38 @@ async def build_chat_info(tg_client, channel):
         "updated_at": ts
     }
     return record
+
+
+async def load_default_channels_in_db(
+    client, channel_id_list=config.DEFAULT_CHANNELS
+):
+    for channel in channel_id_list:
+        try:
+            channel_info = config.db.table("channels").search(
+            Channel.identifier == channel)[0]
+            print(f"{channel} already present in db")
+        except IndexError:
+            channel_info = await build_chat_info(
+                client, channel)
+            config.db.table("channels").insert(channel_info)
+            print(f'{channel} inserted in db')
+            await asyncio.sleep(0.5)
+
+
+TIME_INTERVAL_IN_SEC = 60*60
+
+
+async def count_messages(
+    client
+):
+    while True:
+        all_channels = config.db.table("channels").all()
+        for channel in all_channels:
+            await count_peer_messages(
+                client, channel
+            )
+            print(channel)
+            await asyncio.sleep(0.3)
+            # async GET requests
+            # async update DB
+        await asyncio.sleep(TIME_INTERVAL_IN_SEC)
