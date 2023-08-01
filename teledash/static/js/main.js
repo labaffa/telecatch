@@ -117,6 +117,7 @@ function callAPI(
 
         resultTableBody.appendChild(row);
       });
+      createHistogramFromMessages(window.tableMessages);
       generatePagination(
         '#results-table', '#pagination', $('#results-table').attr('data-page'));
       showRows($('#results-table').attr('data-page'), '#results-table');
@@ -448,7 +449,7 @@ $('#add-chat-btn').click(function(e){
     })
     .then( (data) => {
       if (resp_ok) {
-        fetch('/api/chat_message_count', {
+        fetch('/api/update_chat', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -460,9 +461,7 @@ $('#add-chat-btn').click(function(e){
         .then( (count_resp) => {
           updateMonitor();
           return data;
-        }
-
-        )
+        });
       
       }
       else {
@@ -511,6 +510,104 @@ $('#remove-chat-btn').click(function(e){
     })
   }
 );
+
+
+function createHistogramFromMessages(data) {
+  // Imposta le dimensioni del grafico
+  const width = 400;
+  const height = 300;
+  const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+  let svg;
+  // append the svg object to the body of the page
+  //svg.selectAll("*").remove();
+  svg = d3.select('#histo').selectAll("*").remove();
+  svg = d3.select("#histo")
+    .append("svg")
+      //.attr("width", width + margin.left + margin.right)
+      //.attr("height", height + margin.top + margin.bottom)
+      .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+      .attr("preserveAspectRatio", "xMinYMin meet")
+      //.classed("svg-content", true)
+    .append("g")
+      .attr("transform",
+            "translate(" + margin.left + "," + margin.top + ")");
+            
+
+  let parseTime = d3.timeParse("%Y-%m-%dT%H:%M:%S%Z");
+  let dates = [];
+  for (let obj of data) {
+    dates.push(parseTime(obj.date));
+  } 
+  let domain = d3.extent(dates); 
+  let formatDate = d3.timeFormat("%Y-%m-%d");
+  
+  let x = d3.scaleTime().domain(domain).range([0, width]);  
+  let xAxis = d3.axisBottom(x)
+      //.tickFormat(formatDate);
+  
+  svg.append("g")
+    .attr("transform", "translate(0," + height + ")")
+    .call(xAxis.ticks(d3.timeYear));
+  
+    
+  // set the parameters for the histogram
+  let histogram = d3.histogram()
+      .value(function(d) { return parseTime(d.date); })   // I need to give the vector of value
+      .domain(x.domain())  // then the domain of the graphic
+      .thresholds(x.ticks(10)); // then the numbers of bins
+
+  let bins = histogram(data);
+  
+  // Y axis: scale and draw:
+  let y = d3.scaleLinear()
+      .range([height, 0])
+      .domain([0, d3.max(bins, function(d) { return d.length; })]);   // d3.hist has to be called before the Y axis obviously
+  svg.append("g")
+      .call(d3.axisLeft(y));
+
+
+  // Aggiungi le barre all'istogramma
+
+  
+  svg.selectAll('rect')
+    .data(bins)
+    .enter()
+    .append("rect")
+        .attr("x", 1)
+        .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + y(d.length) + ")"; })
+        .attr("width", function(d) { return x(d.x1) - x(d.x0) -1 ; })
+        .attr("height", function(d) { return height - y(d.length); })
+        .style("fill", "#69b3a2")
+
+
+  $('#histo-caption').html(
+    `
+    Total messages: ${data.length} <br>
+    Group messages: ${window.tableMessages.reduce((acc, x) => x['chat_type'] === 'group' ? acc + 1 : acc, 0)} <br>
+    Channel messages: ${window.tableMessages.reduce((acc, x) => x['chat_type'] === 'channel' ? acc + 1 : acc, 0)}
+    `
+  )
+
+  
+  /* svg_caption = d3.select('#histo-caption').selectAll("*").remove();
+  svg_caption = d3.select("#histo-caption")
+    .append("svg")
+        //.attr("width", (width + margin.left + margin.right)/4)
+        .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+        .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+    
+  svg_caption.append("text")
+      .text(`Total messages: ${data.length}` + "\n" +
+
+        + `Group messages: ${window.tableMessages.reduce((acc, x) => x['chat_type'] === 'group' ? acc + 1 : acc, 0)}`
+        + "\n" + `Channel messages: ${window.tableMessages.reduce((acc, x) => x['chat_type'] === 'channel' ? acc + 1 : acc, 0)}`)
+      .attr("x",  1)
+      //.attr("text-anchor", "end")
+      .attr("y",  1); */
+  
+};
 
 $(document).ready(function() {
   // Inizializza la paginazione
