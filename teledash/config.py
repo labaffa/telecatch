@@ -33,7 +33,7 @@ tg_client = TelegramClient(f'{this_folder}/sessions/{USERNAME}', API_ID, API_HAS
 
 async def create_client():
     # Create the client and connect
-    client = TelegramClient(USERNAME, API_ID, API_HASH)
+    client = TelegramClient(f'{this_folder}/sessions/{USERNAME}', API_ID, API_HASH)
 
     await client.start()
     print("Client created")
