@@ -10,7 +10,8 @@ from fastapi.encoders import jsonable_encoder
 from teledash.channel_messages import search_all_channels, \
     count_peer_messages, get_channel_or_megagroup, \
     build_chat_info, search_all_channels_generator, \
-    load_default_channels_in_db, count_messages
+    load_default_channels_in_db, update_message_counts, \
+    update_participant_counts
 import base64
 from teledash.config import DEFAULT_CHANNELS
 from typing import Union
@@ -57,13 +58,14 @@ app = FastAPI(
 )
 app.mount("/static", StaticFiles(directory="teledash/static"), name="static")
 templates = Jinja2Templates(directory="teledash/templates")
-tg_client.start()
 
 
 @app.on_event("startup")
 async def startup_event():
+    await tg_client.start()
     await load_default_channels_in_db(tg_client)
-    asyncio.create_task(count_messages(tg_client))
+    asyncio.create_task(update_message_counts(tg_client))
+    asyncio.create_task(update_participant_counts(tg_client))
     pass
 
 
@@ -98,16 +100,14 @@ async def read_search_channel(
     offset_channel: int=0, 
     offset_id: int=0
 ):
-    async with tg_client:  
-        response = await search_all_channels(
-            tg_client, 
-            search, 
-            start_date, end_date,
-            chat_type, country,
-            limit,
-            offset_channel, offset_id
-        )
-    
+    response = await search_all_channels(
+        tg_client, 
+        search, 
+        start_date, end_date,
+        chat_type, country,
+        limit,
+        offset_channel, offset_id
+    )
     return JSONResponse(content=jsonable_encoder(
         response, custom_encoder={
         bytes: lambda v: base64.b64encode(v).decode('utf-8')}))
@@ -183,8 +183,7 @@ async def search_and_export_messages_to_csv(
         headers = {
             'Access-Control-Expose-Headers': 'Content-Disposition',
             'Content-Disposition': f'attachment; filename="export{fext}"'
-        }
-    
+    }
     results = search_all_channels_generator(
             tg_client, 
             search,
@@ -227,37 +226,26 @@ async def search_and_export_messages_to_csv(
     )
 
 
-@app.put("/api/chat_message_count")
-async def update_number_of_messages_in_chat(
-    chat: models.ChannelCreate):
-    response = await count_peer_messages(
-        tg_client, chat.identifier
-    )
-    return JSONResponse(content=jsonable_encoder(
-        response, custom_encoder={
-        bytes: lambda v: base64.b64encode(v).decode('utf-8')})
-    )
-
-
 @app.post("/api/channel", response_model=models.Channel)
 async def add_channel(channel: models.ChannelCreate):
     
     channels = config.db.table("channels")
     Ch = Query()
-    async with config.tg_client:
-        try:
-            entity = await config.tg_client.get_input_entity(
-                channel.identifier)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    channel_in_db = channels.search(Ch.id == entity.channel_id)
+    channel_in_db = channels.search(
+        Ch.identifier == channel.identifier
+    )
     if channel_in_db:
         raise HTTPException(
             status_code=400, detail="Channel is registered"
         )
     
-    record = await build_chat_info(
-        tg_client, channel.identifier)
+    try:
+        record = await build_chat_info(
+            tg_client, channel.identifier
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+   
     channels.insert(record)
     return models.Channel(**record)
 
@@ -267,23 +255,121 @@ async def delete_channel_from_db(channel: models.ChannelCreate):
 
     channels = config.db.table("channels")
     Ch = Query()
-    async with config.tg_client:
-        try:
-            entity = await config.tg_client.get_input_entity(
-                channel.identifier
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=400, detail=str(e)
-            )
-    channel_in_db = channels.search(Ch.id == entity.channel_id)
+    
+
+    """  try:
+        entity = await tg_client.get_input_entity(
+            channel.identifier
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=str(e)
+        ) 
+    """
+
+    channel_in_db = channels.search(
+        Ch.identifier == channel.identifier
+    )
     if not channel_in_db:
         raise HTTPException(
             status_code=400, detail="Channel is not registered"
         )
-    async with config.tg_client:
-        await config.tg_client(
-            functions.channels.LeaveChannelRequest(
-                channel.identifier))
-    channels.remove(Ch.id == entity.channel_id)
+    
+    await tg_client(
+        functions.channels.LeaveChannelRequest(
+            int(channel_in_db["id"]))
+        )
+    channels.remove(Ch.id == channel_in_db["id"])
     return models.Channel(**(channel_in_db[0]))
+
+
+@app.put("/api/chat_message_count")
+async def update_number_of_messages_in_chat(
+    chat: models.ChannelCreate
+):
+    channels = config.db.table("channels")
+    Channel = Query()
+    channel_in_db = channels.search(
+        Channel.identifier == chat.identifier
+        )
+    if not channel_in_db:
+        raise HTTPException(
+            status_code=400, detail="Channel is not registered"
+        )
+    msg_count = await count_peer_messages(
+        tg_client, chat.identifier
+    )
+    config.db.table("channels").update(
+        {"count": msg_count["msg_count"]}, 
+        Channel.identifier == chat.identifier
+    )
+    response = config.db.table("channels").search(
+        Channel.identifier == chat.identifier
+    )
+    return JSONResponse(content=jsonable_encoder(
+        response, custom_encoder={
+        bytes: lambda v: base64.b64encode(v).decode('utf-8')})
+    )
+
+
+@app.put("/api/chat_participant_count")
+async def update_number_of_participants_in_chat(
+    chat: models.ChannelCreate
+):
+    channels = config.db.table("channels")
+    Channel = Query()
+    channel_in_db = channels.search(
+        Channel.identifier == chat.identifier
+    )
+    if not channel_in_db:
+        raise HTTPException(
+            status_code=400, detail="Channel is not registered"
+        )
+    response = await build_chat_info(
+        tg_client, chat.identifier
+    )
+    pts_count = response["participants_counts"]
+    config.db.table("channels").update(
+        {"participants_counts": pts_count}, 
+        Channel.identifier == chat.identifier
+    )
+    return JSONResponse(content=jsonable_encoder(
+        response, custom_encoder={
+        bytes: lambda v: base64.b64encode(v).decode('utf-8')})
+    )
+
+
+@app.put("/api/update_chat")
+async def update_dynamic_variables_of_a_chat(
+    chat: models.ChannelCreate
+):
+    channels = config.db.table("channels")
+    Channel = Query()
+    channel_in_db = channels.search(
+        Channel.identifier == chat.identifier
+    )
+    if not channel_in_db:
+        raise HTTPException(
+            status_code=400, detail="Channel is not registered"
+        )
+    chat_info = await build_chat_info(
+        tg_client, chat.identifier
+    )
+    msg_count = await count_peer_messages(
+        tg_client, chat.identifier
+    )
+    pts_count = chat_info["participants_counts"]
+    config.db.table("channels").update(
+        {
+            "participants_counts": pts_count,
+            "count": msg_count["msg_count"]
+        }, 
+        Channel.identifier == chat.identifier
+    )
+    response = config.db.table("channels").search(
+        Channel.identifier == chat.identifier
+    )
+    return JSONResponse(content=jsonable_encoder(
+        response, custom_encoder={
+        bytes: lambda v: base64.b64encode(v).decode('utf-8')})
+    )
