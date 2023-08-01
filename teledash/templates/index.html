@@ -11,8 +11,9 @@
         <!-- Specify body min-height to fill the page if not full already -->
         <style>
             body {
-                min-height: 100vh;
-                min-height: -webkit-fill-available;
+                height: 100vh;
+                height: -webkit-fill-available;
+                margin: 0;
             }
         </style>
     </head>
@@ -111,31 +112,37 @@
                 </div>
             </div>
         </div>
-        <div class="container results">
-            <div class="d-flex justify-content-center">
-                <h1> Results </h1>
+        <div class="d-flex justify-content-center">
+            <h1> Results </h1>
+        </div>
+        <div class="container results d-flex m-4">
+            <div id="timeline-chart" class="d-flex flex-column">
+                <div id="histo-caption"></div>
+                <div id="histo" class="svg-container"></div>
             </div>
-            <div class="cntr-export">
-                <a href="#"  id="export-messages">Export messages</a>
-                <!-- <p style="visibility: hidden;">placeholder</p> -->
-            </div>
-            <table id="results-table" data-page="1" class="tg-messages">
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>Message</th>
-                        <th>Timestamp</th>
-                        <th>Type</th>
-                        <th>Country</th>
-                        <th>Views</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            <div id="pagination" style="gap: 3px;">
-                <a href="#"  id="page-dw">Previous</a>
-                <span id="page-number"> 1 </span>
-                <a href="#"  id="page-up">Next</a>
+            <div class="tab-section">
+                <div class="cntr-export">
+                    <a href="#"  id="export-messages">Export messages</a>
+                    <!-- <p style="visibility: hidden;">placeholder</p> -->
+                </div>
+                <table id="results-table" data-page="1" class="tg-messages">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Message</th>
+                            <th>Timestamp</th>
+                            <th>Type</th>
+                            <th>Country</th>
+                            <th>Views</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="pagination" style="gap: 3px;">
+                    <a href="#"  id="page-dw">Previous</a>
+                    <span id="page-number"> 1 </span>
+                    <a href="#"  id="page-up">Next</a>
+                </div>
             </div>
         </div>
         <script>
@@ -146,6 +153,7 @@
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/web-streams-polyfill@2.0.2/dist/ponyfill.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
         <script src="{{ url_for('static', path='/js/main.js' ) }}"></script>
     </body>
     
