@@ -27,13 +27,18 @@ class Channel(ChannelCreate):
     inserted_at: str
     updated_at: str
     count: Union[int, None] = None
+    access_hash: Union[int, None] = None
+    username: Union[str, None] = None
+    is_joined: bool = False
 
 
 class Message(BaseModel):
+    id: int
     username: str
     message: str
     timestamp: str
     type: str
     country: Union[str, None]
     views: Union[StringInt, None]
+    # media: Union[str, None]
 
