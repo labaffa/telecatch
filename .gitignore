@@ -84,3 +84,8 @@ node_modules/
 
 # vscode
 .vscode/
+
+
+# telethon sessions and db
+teledash/sessions/*
+!teledash/sessions/.gitkeep
