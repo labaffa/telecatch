@@ -412,7 +412,7 @@ async function fillPtsCounts(eleId){
 };
 
 async function updateMonitor(){
-  fetch(`/api/channels_info`, 
+  fetch(`/api/channels_info?is_joined=true`, 
       {
           headers: {'Cache-Control': 'no-cache'}
       }
@@ -511,6 +511,13 @@ $('#remove-chat-btn').click(function(e){
   }
 );
 
+function monthDiff(d1, d2) {
+  let months;
+  months = (d2.getFullYear() - d1.getFullYear()) * 12;
+  months -= d1.getMonth();
+  months += d2.getMonth();
+  return months <= 0 ? 0 : months;
+}
 
 function createHistogramFromMessages(data) {
   // Imposta le dimensioni del grafico
@@ -554,7 +561,7 @@ function createHistogramFromMessages(data) {
   let histogram = d3.histogram()
       .value(function(d) { return parseTime(d.date); })   // I need to give the vector of value
       .domain(x.domain())  // then the domain of the graphic
-      .thresholds(x.ticks(10)); // then the numbers of bins
+      .thresholds(x.ticks(monthDiff(domain[0], domain[1]))); // then the numbers of bins
 
   let bins = histogram(data);
   
