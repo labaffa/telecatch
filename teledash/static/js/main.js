@@ -101,10 +101,10 @@ function callAPI(
         const viewsCell = document.createElement("td");
 
 
-        channelCell.textContent = item.peer_id.channel_url;
+        channelCell.textContent = item.username;
         messageCell.textContent = item.message;
-        timestampCell.textContent = item.date;
-        typeCell.textContent = item.chat_type;
+        timestampCell.textContent = item.timestamp;
+        typeCell.textContent = item.type;
         countryCell.textContent = item.country;
         viewsCell.textContent = item.views;
 
@@ -152,7 +152,7 @@ function callAPI(
 
     if (pageNumber == totalPages && window.messagesDone == false){
         let offset_channel = window.allChannels.indexOf(
-            window.tableMessages.slice(-1)[0].peer_id.channel_url
+            window.tableMessages.slice(-1)[0].username
         );
         let offset_id = window.tableMessages.slice(-1)[0].id;
         callAPI(
@@ -543,7 +543,7 @@ function createHistogramFromMessages(data) {
   let parseTime = d3.timeParse("%Y-%m-%dT%H:%M:%S%Z");
   let dates = [];
   for (let obj of data) {
-    dates.push(parseTime(obj.date));
+    dates.push(parseTime(obj.timestamp));
   } 
   let domain = d3.extent(dates); 
   let formatDate = d3.timeFormat("%Y-%m-%d");
@@ -559,7 +559,7 @@ function createHistogramFromMessages(data) {
     
   // set the parameters for the histogram
   let histogram = d3.histogram()
-      .value(function(d) { return parseTime(d.date); })   // I need to give the vector of value
+      .value(function(d) { return parseTime(d.timestamp); })   // I need to give the vector of value
       .domain(x.domain())  // then the domain of the graphic
       .thresholds(x.ticks(monthDiff(domain[0], domain[1]))); // then the numbers of bins
 
@@ -590,8 +590,8 @@ function createHistogramFromMessages(data) {
   $('#histo-caption').html(
     `
     Total messages: ${data.length} <br>
-    Group messages: ${window.tableMessages.reduce((acc, x) => x['chat_type'] === 'group' ? acc + 1 : acc, 0)} <br>
-    Channel messages: ${window.tableMessages.reduce((acc, x) => x['chat_type'] === 'channel' ? acc + 1 : acc, 0)}
+    Group messages: ${window.tableMessages.reduce((acc, x) => x['type'] === 'group' ? acc + 1 : acc, 0)} <br>
+    Channel messages: ${window.tableMessages.reduce((acc, x) => x['type'] === 'channel' ? acc + 1 : acc, 0)}
     `
   )
 
