@@ -3,7 +3,7 @@ from fastapi.responses import ORJSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi import Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, \
-    FileResponse
+    FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
@@ -20,6 +20,7 @@ from teledash import config
 from teledash.config import tg_client
 import datetime as dt
 from telethon import functions
+from telethon.errors import SessionPasswordNeededError
 from typing import List
 import io
 import pandas as pd
@@ -29,6 +30,41 @@ import asyncio
 import io
 import csv
 from tinydb import Query
+
+
+APP_DATA= {}
+
+BASE_TEMPLATE = '''
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <meta charset='UTF-8'>
+            <title>Telethon + Quart</title>
+        </head>
+        <body>{{ content | safe }}</body>
+    </html>
+'''
+
+PHONE_FORM = '''
+    <form action='/login' method='post'>
+        Phone (international format): <input name='phone' type='text' placeholder='+34600000000'>
+        <input type='submit'>
+    </form>
+'''
+
+CODE_FORM = '''
+    <form action='/login' method='post'>
+        Telegram code: <input name='code' type='text' placeholder='70707'>
+        <input type='submit'>
+    </form>
+'''
+
+PASSWORD_FORM = '''
+    <form action='/login' method='post'>
+        Telegram password: <input name='password' type='text' placeholder='your password'>
+        <input type='submit'>
+    </form>
+'''
 
 
 def validate_date(v):
@@ -61,18 +97,69 @@ templates = Jinja2Templates(directory="teledash/templates")
 
 Channel = Query()
 
+
 @app.on_event("startup")
 async def startup_event():
-    await tg_client.start()
-    await load_default_channels_in_db(tg_client)
-    asyncio.create_task(update_message_counts(tg_client))
-    asyncio.create_task(update_participant_counts(tg_client))
-    pass
+    await tg_client.connect()
+    if await tg_client.is_user_authorized():
+        APP_DATA["is_logged_in"] = True
+        # await tg_client.start()
+        await load_default_channels_in_db(tg_client)
+        asyncio.create_task(update_message_counts(tg_client))
+        asyncio.create_task(update_participant_counts(tg_client))
+    else:
+        APP_DATA["is_logged_in"] = False
+        APP_DATA["phone"] = None
+    
+
+@app.post("/login", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+async def login_page(request: Request):
+    """
+    Inspired from telethon example:
+    https://github.com/LonamiWebs/Telethon/blob/v1/telethon_examples/quart_login.py
+    
+    """
+    
+    form = await request.form()
+    if 'phone' in form:
+        APP_DATA["phone"] = form['phone']
+        await tg_client.send_code_request(APP_DATA["phone"])
+    if 'code' in form:
+        try:
+            await tg_client.sign_in(code=form['code'])
+        except SessionPasswordNeededError:
+            
+            return templates.TemplateResponse(
+                "login_base.html",
+                {"request": request, "content": PASSWORD_FORM}
+            )
+    if 'password' in form:
+        await tg_client.sign_in(password=form['password'])
+    
+    if await tg_client.is_user_authorized():
+        APP_DATA["is_logged_in"] = True
+        await load_default_channels_in_db(tg_client)
+        asyncio.create_task(update_message_counts(tg_client))
+        asyncio.create_task(update_participant_counts(tg_client))
+        return RedirectResponse("/", status_code=302)
+
+    if APP_DATA["phone"] is None:
+        return templates.TemplateResponse(
+            "login_base.html",
+            {"request": request, "content": PHONE_FORM}
+        )
+    return templates.TemplateResponse(
+        "login_base.html",
+        {"request": request, "content": CODE_FORM}
+        )
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def home(request: Request):
-
+    if not APP_DATA["is_logged_in"]:
+        return RedirectResponse("/login")
+    
     channels = config.db.table("channels").all()
     ch_meta = {
         "channel_count": sum(1 for c in channels if c["type"] == "channel"),
@@ -88,8 +175,8 @@ async def home(request: Request):
         "index.html",
         data
     )
-
-
+   
+        
 @app.get("/api/search_channels")
 async def read_search_channel(
     search, 
