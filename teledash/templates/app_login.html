@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+
+    <!-- HEAD -->
+    <head>
+        <title>TeleDash</title> <!-- may want to replace with jinja variable pulled through? -->
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+        <link rel="stylesheet/less" type="text/css" href="{{ url_for('static', path='/css/auth.less') }}">
+        <script src="https://cdn.jsdelivr.net/npm/less" ></script>
+        <!-- Specify body min-height to fill the page if not full already -->
+        <style>
+            body {
+                height: 100vh;
+                height: -webkit-fill-available;
+                margin: 0;
+            }
+        </style>
+    </head>
+
+<body class="d-flex flex-column">
+    <div class="form">
+        
+        <ul class="tab-group">
+            <li class="tab active"><a href="#login">Log In</a></li>
+            <li class="tab"><a href="#signup">Sign Up</a></li>
+        </ul>
+        
+        <div class="tab-content">
+            
+            <div id="login">   
+                
+                <form id="loginForm">
+                    <h1>Welcome Back!</h1>
+                    <p id="loginStatus"></p>
+                    
+                    <div class="field-wrap">
+                        <label>
+                            Username or Email Address<span class="req">*</span>
+                        </label>
+                        <input name="username" type="text" required autocomplete="off"/>
+                    </div>
+                    
+                    <div class="field-wrap">
+                        <label>
+                            Password<span class="req">*</span>
+                        </label>
+                        <input name="password" type="password" required autocomplete="off"/>
+                    </div>
+                    
+                    <p class="forgot"><a href="#">Forgot Password?</a></p>
+                    
+                    <button id="loginSubmit" class="button button-block"/>Log In</button>
+                    
+                </form>
+
+            </div>
+            <div id="signup">   
+                
+                <form id="registerForm">
+                    <h1>Sign Up for Free</h1>
+                    <p id="registerStatus"></p>
+                    
+                    <div class="field-wrap">
+                        <label>
+                            Email Address<span class="req">*</span>
+                        </label>
+                        <input name="email" type="email" required autocomplete="off"/>
+                    </div>
+                    <div class="field-wrap">
+                        <label>
+                            Username<span class="req">*</span>
+                        </label>
+                        <input name="username" type="text" required autocomplete="off"/>
+                    </div>
+                    <div class="field-wrap">
+                        <label>
+                            Set A Password<span class="req">*</span>
+                        </label>
+                        <input name="password" type="password"required autocomplete="off"/>
+                    </div>
+                    
+                    <div class="top-row">
+                        <div class="field-wrap">
+                            <label>First Name</label>
+                            <input name="first_name" type="text" required autocomplete="off" />
+                        </div>
+                    
+                        <div class="field-wrap">
+                            <label>Last Name</label>
+                            <input name="last_name" type="text"required autocomplete="off"/>
+                        </div>
+                    </div>
+                    <button id="registerSubmit" type="submit" class="button button-block"/>Get Started</button>
+                    
+                </form>
+
+            </div>
+            
+        
+        </div><!-- tab-content -->
+        
+    </div> <!-- /form -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web-streams-polyfill@2.0.2/dist/ponyfill.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="{{ url_for('static', path='/js/auth.js' ) }}"></script>
+</body>
+</html>

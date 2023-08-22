@@ -20,6 +20,23 @@
 
     <!-- Body of the webpage -->
     <body class="d-flex flex-column">
+        <nav>
+            <ul>
+                <li>
+                    "Logged in as {{user.username}} ("
+                    <a href="/logout">logout</a> ")"
+                </li>
+                <li>
+                    Add Telegram account
+                </li>
+                <li>
+                    List of available clients: {{clients}}
+                </li>
+                <li>
+                    Using phone: (Change)
+                </li>
+            </ul>
+        </nav>
         <div class="container cloche d-flex nowrap">
             <div class="control d-flex flex-column">
                 <div class="inputs d-flex">
@@ -147,7 +164,7 @@
         </div>
         <script>
         var allChannels = JSON.parse('{{all_channels|tojson}}');
-        
+        var activeClient = JSON.parse('{{active_client|tojson}}');
         </script>
         <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
