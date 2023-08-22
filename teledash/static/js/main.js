@@ -46,7 +46,7 @@ $('#submitButton').on("click", async function() {
     if (!window.data_range){
       callAPI(search, window.limit, 0, 0, 
         window.start_date, window.end_date, 
-        window.chat_type, window.country);
+        window.chat_type, window.country, window.activeClient);
     } else {
       await export_search();
     }
@@ -64,7 +64,7 @@ function callAPI(
   value, limit=40, 
   offset_channel=0, offset_id=0,
   start_date, end_date, chat_type,
-  country
+  country, client_id
   ) {
   emptyTableHeight = 30*rowsPerPage;
   resultTableBody.innerHTML = `<div class="container" style="height: ${emptyTableHeight}px;>
@@ -72,7 +72,7 @@ function callAPI(
     </div>
     `;
   fetch(
-    `/api/search_channels?search=${value}&limit=${limit}&offset_channel=${offset_channel}&offset_id=${offset_id}&start_date=${start_date}&end_date=${end_date}&chat_type=${chat_type}&country=${country}`,
+    `/api/search_channels?search=${value}&limit=${limit}&offset_channel=${offset_channel}&offset_id=${offset_id}&start_date=${start_date}&end_date=${end_date}&chat_type=${chat_type}&country=${country}&client_id=${client_id}`,
     {
         headers: {
           'Cache-Control': 'no-cache'
@@ -159,7 +159,7 @@ function callAPI(
           window.search, window.limit, 
           offset_channel, offset_id, 
           window.start_date, window.end_date,
-          window.chat_type, window.country
+          window.chat_type, window.country, window.activeClient
           );
     }
 
@@ -258,7 +258,8 @@ async function export_search(){
     limit: -1,
     offset_channel: 0,
     offset_id: 0,
-    out_format: window.export_format
+    out_format: window.export_format,
+    client_id: window.activeClient
   };
   var url = new URL('/api/stream_search', window.location.origin);
   url.search = new URLSearchParams(params).toString();
