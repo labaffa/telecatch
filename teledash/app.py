@@ -16,7 +16,7 @@ from teledash.ui.login import ui_login_router
 from teledash.ui.home import home_router
 from teledash.api.admin import admin_router
 from teledash.utils.telegram import get_authenticated_client
-
+from teledash.ui import clients
 
 app = FastAPI(
     title="TeleDash",
@@ -105,7 +105,7 @@ app.include_router(search_router)
 app.include_router(home_router)
 app.include_router(api_login_router)
 app.include_router(admin_router)
-
+app.include_router(clients.router)
 
 app.add_exception_handler(
     config.NotAuthenticatedException, auth_exception_handler
