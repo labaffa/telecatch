@@ -10,7 +10,10 @@ from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
-from teledash.utils.telegram import create_client
+from teledash.utils.telegram import create_client, \
+    create_session_id
+import pandas as pd
+import io
 
 
 user_db = config.db.table("users")
@@ -114,14 +117,17 @@ async def add_phone_to_user(
     code: Annotated[int, fastapi.Form()] = None,
     user=fastapi.Depends(config.settings.MANAGER)
 ):
+    session_id = create_session_id(phone, api_id, api_hash)
+    client_id = session_id + '.session'
     TgClient = Query()
     UserTg = Query()
     client_in_db = config.db.table("tg_clients").search(
-        (TgClient.phone == phone) &
-        (TgClient.api_id == api_id) &
-        (TgClient.api_hash == api_hash)
+        (TgClient.client_id == client_id)
     )
     client_in_db = client_in_db[0] if client_in_db else {}
+    if request.app.state.clients.get(client_id):
+        return client_in_db
+    
     authenticated = client_in_db.get("authenticated", False)
     client_dict = await create_client(
         phone, api_id, api_hash, code, authenticated,
@@ -133,23 +139,18 @@ async def add_phone_to_user(
         "api_hash": api_hash
     }
     config.db.table("users_clients").upsert(
-            {
-                "user_id": user.user_id, 
-                "client_id": tg_client["client_id"]
-            },
-            (UserTg.user_id == user.user_id) &
-            (UserTg.client_id == tg_client["client_id"])
+        {
+            "user_id": user.user_id, 
+            "client_id": tg_client["client_id"]
+        },
+        (UserTg.user_id == user.user_id) &
+        (UserTg.client_id == tg_client["client_id"])
     )
-    if client_dict["status"] != "ok":
+    if client_dict["status"] == "ok":
+        tg_client["authenticated"] = True
+    else:
         tg_client["authenticated"] = False
-        config.db.table("tg_clients").upsert(
-            tg_client,
-            (TgClient.client_id == tg_client["client_id"]) 
-        )
         
-        return client_dict
-    
-    tg_client["authenticated"] = True
     config.db.table("tg_clients").upsert(
         tg_client,
         TgClient.client_id == tg_client["client_id"]
@@ -158,6 +159,49 @@ async def add_phone_to_user(
        TgClient.client_id == tg_client["client_id"]
     )
     return account
+
+
+@api_login_router.post("/uploadfile")
+async def upload_entities(phile: fastapi.UploadFile):
+    successful_parsing = False
+    content = await phile.read()
+    error = None
+    data = []
+    try:
+        # Try parsing as CSV
+        df = pd.read_csv(
+            io.BytesIO(content), 
+            sep=None, 
+            engine="python",
+            encoding="ISO-8859-1"
+            
+        )
+        successful_parsing = True
+        
+    except Exception:
+        try:
+            df = pd.read_excel(io.BytesIO(content))
+            successful_parsing = True
+        except Exception as e:
+            error = str(e)
+    
+    if successful_parsing:
+        df.columns = df.columns.str.lower()
+        for row in df.to_dict("records"):
+            row = models.ChannelUpload(**row).dict()
+            data.append(row)
+        return {
+            "message": "File ok",
+            "error": error,
+            "columns": None,
+            "rows": data
+        }
+    return {
+        "message": "File not parsed", 
+        "columns": None,
+        "error": error,
+        "data": data
+    }
 
 
 
