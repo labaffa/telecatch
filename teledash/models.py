@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Literal
 from uuid import UUID, uuid4
 
 
@@ -98,6 +98,51 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+
+
+class ChannelUpload(BaseModel):
+    name: str
+    url: str
+    username: str
+    location: str
+    language: str
+    category: str
+    type: Union[str, None] = None
+
+
+class ChannelCommon(BaseModel):
+    id: int
+    url: str
+    username: str
+    type: Literal["channel", "group"]
+    access_hash: Union[int, None] = None
+    messages_count: Union[int, None] = None
+    participants_count: Union[int, None] = None
+    about: str = ""
+    title: str = Field(..., alias="name")
+    inserted_at: str
+    updated_at: str
+
+
+class ChannelCustom(BaseModel):
+    channel_id: int
+    user_id: str
+    language: str
+    location: str
+    category: str
+
+
+class ChannelTag(BaseModel):
+    user_id: str
+    channel_id: int
+    tag_id: int = 0  # index for meaningless/default tag
+
+
+class Tag(BaseModel):
+    tag: str
+    tag_id: int
+
+
 
 
 
