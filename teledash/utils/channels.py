@@ -4,6 +4,8 @@ from teledash import models
 import hashlib
 
 
+
+
 def create_session_id(api_phone, api_id, api_hash):
     """
     Generate a filename for the session file
