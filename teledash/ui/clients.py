@@ -2,7 +2,10 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from teledash import config
-from tinydb import Query
+from teledash.utils.db import tg_client as ut
+from teledash.utils.db import user as uu
+from sqlalchemy.orm import Session
+from teledash.db.db_setup import get_db
 
 
 router = APIRouter()
@@ -13,20 +16,16 @@ templates = Jinja2Templates(directory="teledash/templates")
 @router.post("/clients", include_in_schema=False)
 async def page_to_manage_user_clients(
     request: Request,
-    user=Depends(config.settings.MANAGER)
+    user=Depends(config.settings.MANAGER),
+    db: Session = Depends(get_db)
 ):
-    client_ids = [
-        x["client_id"] 
-        for x in config.db.table("users_clients").search(
-            Query().user_id == user.user_id)
-    ]
-    clients = config.db.table("tg_clients").search(
-        Query().client_id.one_of(client_ids)
-    )
+    active_collection = uu.get_active_collection(db, user.id)
+    clients = ut.get_user_clients(db, user_id=user.id)
     data = {
         "request": request,
         "clients": clients,
-        "user": user
+        "user": user,
+        "active_collection": active_collection
     }
     return templates.TemplateResponse(
         "user_clients.html",
