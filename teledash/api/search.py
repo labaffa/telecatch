@@ -1,42 +1,33 @@
 import fastapi
-from fastapi import FastAPI
-from fastapi.responses import ORJSONResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi import Depends, Request, HTTPException, \
-    APIRouter
+from fastapi import HTTPException, APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse, StreamingResponse, \
-    FileResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+    FileResponse
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from teledash.channel_messages import search_all_channels, \
-    count_peer_messages, get_channel_or_megagroup, \
-    build_chat_info, search_all_channels_generator, \
-    load_default_channels_in_db, update_message_counts, \
-    update_participant_counts, join_channel, leave_channel
+    search_all_channels_generator
 import base64
 from teledash.config import DEFAULT_CHANNELS
 from typing import Union
 from teledash import models
 from teledash import config
-from teledash.config import tg_client
 import datetime as dt
 from telethon import types
-from telethon.errors import SessionPasswordNeededError
 from typing import List
 import io
 import pandas as pd
 from dateutil.parser import parse
 import json
-import asyncio
 import io
 import csv
-from tinydb import Query
 from teledash.utils import telegram
+from sqlalchemy.orm import Session
+from teledash.db.db_setup import get_db
+from teledash.utils.db import tg_client as ut
+from teledash.utils.db import channel as uc
 
 
 search_router = APIRouter()
-Channel = Query()
 
 
 def validate_date(v):
@@ -54,7 +45,8 @@ class StrictDate(dt.datetime):
 @search_router.get("/api/search_channels")
 async def read_search_channel(
     request: fastapi.Request,
-    search, 
+    search,
+    channel_urls: List[str]=Query(default=[]),
     start_date: StrictDate=None,
     end_date: StrictDate=None,
     chat_type: Union[str, None]=None,
@@ -62,20 +54,46 @@ async def read_search_channel(
     limit: int=100, 
     offset_channel: int=0, 
     offset_id: int=0,
-    client_id: Union[str, None]=None
+    db: Session=Depends(get_db),
+    user = Depends(config.settings.MANAGER)
 ):
-    if client_id is not None:
-        tg_client = request.app.state.clients.get(client_id)
-        if tg_client is None:
-            tg_client = await telegram.get_authenticated_client(client_id)
-            request.app.state.clients[client_id] = tg_client
+    # TODO: the client_id should be replaced by an 'active client' set by user
+    client_ids = ut.get_user_clients(db=db, user_id=int(user.id))
+    client_id = client_ids[0]["client_id"] if client_ids else None
+    if client_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User {user.username} has not registered Telegram clients"
+        )
+    tg_client = request.app.state.clients.get(client_id)
+    if tg_client is None:
+        tg_client = await telegram.get_authenticated_client(client_id)
+        request.app.state.clients[client_id] = tg_client
+    if not channel_urls:
+        collection_titles = uc.get_channel_collection_titles_of_user(db, int(user.id))
+        title = collection_titles[0] if collection_titles else None
+        if title is None:
+            raise HTTPException(
+            status_code=400,
+            detail=f"Please set channels to search or create a collection"
+        )
+        # TODO: this should be replaced so that 'search_all_channels' does not query the db
+        channel_urls = [   
+            x["channel_url"] 
+            for x in uc.get_channel_collection(db, user.id, title)
+        ]
     response = await search_all_channels(
-        tg_client, 
-        search, 
-        start_date, end_date,
-        chat_type, country,
-        limit,
-        offset_channel, offset_id
+        db=db,
+        client=tg_client, 
+        search=search,
+        channel_urls=channel_urls,
+        start_date=start_date,
+        end_date=end_date,
+        chat_type=chat_type,
+        country=country,
+        limit=limit,
+        offset_channel=offset_channel,
+        offset_id=offset_id
     )
     return JSONResponse(content=jsonable_encoder(
         response, custom_encoder={
@@ -87,6 +105,7 @@ async def read_search_channel(
 async def search_and_export_messages_to_csv(
     request: fastapi.Request,
     search: str,
+    channel_urls: List[str]=Query(default=[]),
     start_date: StrictDate=None,
     end_date: StrictDate=None,
     chat_type: Union[str, None]=None,
@@ -95,13 +114,35 @@ async def search_and_export_messages_to_csv(
     offset_channel: int=0, 
     offset_id: int=0,
     out_format: Union[str, None]=None,
-    client_id: Union[str, None]=None
+    db: Session=Depends(get_db),
+    user = Depends(config.settings.MANAGER)
 ):
-    if client_id is not None:
-        tg_client = request.app.state.clients.get(client_id)
-        if tg_client is None:
-            tg_client = await telegram.get_authenticated_client(client_id)
-            request.app.state.clients[client_id] = tg_client
+    # TODO: the client_id should be replaced by an 'active client' set by user
+    client_ids = ut.get_user_clients(db=db, user_id=int(user.id))
+    client_id = client_ids[0]["client_id"] if client_ids else None
+    if client_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User {user.username} has not registered Telegram clients"
+        )
+    
+    tg_client = request.app.state.clients.get(client_id)
+    if tg_client is None:
+        tg_client = await telegram.get_authenticated_client(client_id)
+        request.app.state.clients[client_id] = tg_client
+    if not channel_urls:
+        collection_titles = uc.get_channel_collection_titles_of_user(db, int(user.id))
+        title = collection_titles[0] if collection_titles else None
+        if title is None:
+            raise HTTPException(
+            status_code=400,
+            detail=f"Please set channels to search or create a collection"
+        )
+        # TODO: this should be replaced so that 'search_all_channels' does not query the db
+        channel_urls = [   
+            x["channel_url"] 
+            for x in uc.get_channel_collection(db, user.id, title)
+        ]
     headers = {}
     if (out_format == "csv") or (out_format == "json"):
         fext = ".csv" if out_format == "csv" else ".json"
@@ -110,15 +151,17 @@ async def search_and_export_messages_to_csv(
             'Content-Disposition': f'attachment; filename="export{fext}"'
     }
     results = search_all_channels_generator(
-            tg_client, 
-            search,
-            start_date,
-            end_date,
-            chat_type,
-            country,
-            limit,
-            offset_channel,
-            offset_id
+            db=db,
+            client=tg_client, 
+            search=search,
+            channel_urls=channel_urls,
+            start_date=start_date,
+            end_date=end_date,
+            chat_type=chat_type,
+            country=country,
+            limit=limit,
+            offset_channel=offset_channel,
+            offset_id=offset_id
         )
     
     async def _encoded_results():
