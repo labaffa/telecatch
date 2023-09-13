@@ -26,7 +26,7 @@ function showChannels(data, title='Collection Title'){
   try {
     window.dtable = $('#results-table').DataTable({
       "binfo": true,
-      "sDom": '<"header"i>t<"Footer">',
+      "sDom": '<"header"if>tp<"Footer">',
       "oLanguage": {
           "sInfo": `Showing channels from: ${title}`
       },
