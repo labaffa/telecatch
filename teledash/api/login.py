@@ -11,9 +11,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from teledash.utils.telegram import create_client, \
-    create_session_id
+    create_session_id, get_authenticated_client
 import pandas as pd
 import io
+from sqlalchemy.orm import Session
+from teledash.db.db_setup import get_db
+from teledash.utils.db import user as uu
+from teledash.utils.db import tg_client as ut
+from teledash.db import models as db_models
 
 
 user_db = config.db.table("users")
@@ -25,12 +30,21 @@ templates = Jinja2Templates(directory="teledash/templates")
 @api_login_router.post(
     '/signup', 
     summary="Create new user", 
-    response_model=models.User)
-async def create_user(data: models.UserAuth):
+    response_model=models.UserInDB
+)
+async def create_user(
+    data: models.UserAuth,
+    db: Session = fastapi.Depends(get_db)
+):
     # querying database to check if user already exist
     detail = None
-    user_by_email = user_db.search(User.email == data.email)
-    user_by_name = user_db.search(User.username == data.username)
+    # user_by_email = user_db.search(User.email == data.email)
+    # user_by_name = user_db.search(User.username == data.username)
+    
+    user_by_email = uu.get_user_by_email(db=db, email=data.email)
+    user_by_name = uu.get_user_by_username(
+        db=db, username=data.username
+    )
     if user_by_email and user_by_name:
         detail = "Email and username already exist"
     elif user_by_name and not user_by_email:
@@ -45,12 +59,13 @@ async def create_user(data: models.UserAuth):
     user = {
         'email': data.email,
         'username': data.username,
-        'user_id': str(uuid4())
+        # 'user_id': str(uuid4())
     }
     user_in_db = dict(user)
     user_in_db["hashed_password"] = get_password_hash(data.password)
-    user_db.insert(dict(models.UserInDB(**user_in_db)))   # saving user to database
-    return user
+
+    # user_db.insert(dict(models.UserInDB(**user_in_db)))   # saving user to database
+    return uu.create_user(db=db, user=user_in_db).to_dict()
 
 
 @api_login_router.post(
@@ -61,10 +76,12 @@ async def create_user(data: models.UserAuth):
 async def login_to_app_account(
     response: fastapi.Response,
     form_data: Annotated[
-        OAuth2PasswordRequestForm, fastapi.Depends()]):
+        OAuth2PasswordRequestForm, fastapi.Depends()],
+    db: Session = fastapi.Depends(get_db)
+):
     user = authenticate_user(
         # config.db.table("users"), 
-        form_data.username, form_data.password
+        db, form_data.username, form_data.password
     )
     if not user:
         raise fastapi.HTTPException(
@@ -115,56 +132,58 @@ async def add_phone_to_user(
     api_id: Annotated[int, fastapi.Form()],
     api_hash: Annotated[str, fastapi.Form()],
     code: Annotated[int, fastapi.Form()] = None,
-    user=fastapi.Depends(config.settings.MANAGER)
+    user = fastapi.Depends(config.settings.MANAGER),
+    db: Session = fastapi.Depends(get_db)
 ):
-    session_id = create_session_id(phone, api_id, api_hash)
-    client_id = session_id + '.session'
-    TgClient = Query()
-    UserTg = Query()
-    client_in_db = config.db.table("tg_clients").search(
-        (TgClient.client_id == client_id)
-    )
-    client_in_db = client_in_db[0] if client_in_db else {}
-    if request.app.state.clients.get(client_id):
-        return client_in_db
-    
-    authenticated = client_in_db.get("authenticated", False)
-    client_dict = await create_client(
-        phone, api_id, api_hash, code, authenticated,
-    )
-    tg_client = {
-        "client_id": client_dict["session_file"],
-        "phone": phone,
-        "api_id": api_id,
-        "api_hash": api_hash
-    }
-    config.db.table("users_clients").upsert(
-        {
-            "user_id": user.user_id, 
-            "client_id": tg_client["client_id"]
-        },
-        (UserTg.user_id == user.user_id) &
-        (UserTg.client_id == tg_client["client_id"])
-    )
-    if client_dict["status"] == "ok":
-        tg_client["authenticated"] = True
-    else:
-        tg_client["authenticated"] = False
+    try:
+        session_id = create_session_id(phone, api_id, api_hash)
+        client_id = session_id + '.session'
         
-    config.db.table("tg_clients").upsert(
-        tg_client,
-        TgClient.client_id == tg_client["client_id"]
-    )
-    account = config.db.table("tg_clients").search(
-       TgClient.client_id == tg_client["client_id"]
-    )
-    return account
+        """ TgClient = Query()
+        UserTg = Query()
+        client_in_db = config.db.table("tg_clients").search(
+            (TgClient.client_id == client_id)
+        )
+        client_in_db = client_in_db[0] if client_in_db else {} """
+
+        client_in_db = ut.get_client_meta(db, client_id)
+        client_in_db = client_in_db.to_dict() if client_in_db else {}
+        if request.app.state.clients.get(client_id):
+            ut.upsert_user_client_relation(
+                db=db, user_id=user.id, client_id=client_id
+            )
+            return client_in_db
+        
+        authenticated = client_in_db.get("authenticated", False)
+        client_dict = await create_client(
+            phone, api_id, api_hash, code, authenticated,
+        )
+        tg_client = {
+            "id": client_dict["session_file"],
+            "phone": phone,
+            "api_id": api_id,
+            "api_hash": api_hash
+        }
+        tg_client["authenticated"] = True if (client_dict["status"] == "ok") else False    
+        ut.upsert_tg_client(db=db, row_dict=tg_client)
+        ut.upsert_user_client_relation(
+            db=db, user_id=user.id, client_id=client_id
+        )
+        if tg_client["authenticated"]:
+            request.app.state.clients[client_id] = await get_authenticated_client(
+                db, client_id
+            )
+    except Exception as e:
+        raise fastapi.HTTPException(
+            status_code=400, detail=[{"msg": str(e)}]
+        )
+    return tg_client
 
 
 @api_login_router.post("/uploadfile")
-async def upload_entities(phile: fastapi.UploadFile):
+async def upload_entities(file: fastapi.UploadFile):
     successful_parsing = False
-    content = await phile.read()
+    content = await file.read()
     error = None
     data = []
     try:
@@ -177,7 +196,6 @@ async def upload_entities(phile: fastapi.UploadFile):
             
         )
         successful_parsing = True
-        
     except Exception:
         try:
             df = pd.read_excel(io.BytesIO(content))
@@ -193,12 +211,10 @@ async def upload_entities(phile: fastapi.UploadFile):
         return {
             "message": "File ok",
             "error": error,
-            "columns": None,
             "rows": data
         }
     return {
         "message": "File not parsed", 
-        "columns": None,
         "error": error,
         "data": data
     }
