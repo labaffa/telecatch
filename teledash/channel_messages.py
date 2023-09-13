@@ -13,6 +13,8 @@ import datetime as dt
 import pytz
 import asyncio
 from typing import Union
+from teledash.utils.db import channel as uc
+from sqlalchemy.orm import Session
 
 
 Channel = Query()
@@ -79,7 +81,7 @@ async def search_channel_raw(client, channel, search):
 
 async def search_single_channel_batch(
     client, 
-    channel: dict, 
+    channel_info: dict, 
     search, 
     start_date: dt.datetime=None, 
     end_date: dt.datetime=None,
@@ -87,12 +89,9 @@ async def search_single_channel_batch(
     offset_id: int=0
 ):
     all_messages = []
-    channel_info = config.db.table("channels").search(
-            Channel.id == int(channel["id"]))[0]
-   
     entity = types.InputPeerChannel(
-        channel_id=int(channel["id"]),
-        access_hash=channel["access_hash"]
+        channel_id=int(channel_info["id"]),
+        access_hash=channel_info["access_hash"]
     )
     async for message in client.iter_messages(
         entity, 
@@ -106,7 +105,7 @@ async def search_single_channel_batch(
             continue
         if start_date and message["date"] < start_date.replace(tzinfo=pytz.UTC):
             break
-        message["peer_id"]["channel_url"] = channel_info["identifier"]
+        message["peer_id"]["channel_url"] = channel_info["url"]
         message["chat_type"] = channel_info["type"]
         message["country"] = channel_info.get("country")
         all_messages.append(parse_raw_message(message))
@@ -114,8 +113,10 @@ async def search_single_channel_batch(
 
 
 async def search_all_channels(
+    db: Session,
     client, 
-    search, 
+    search,
+    channel_urls, 
     start_date: dt.datetime=None, 
     end_date: dt.datetime=None,
     chat_type: str=None, 
@@ -131,15 +132,21 @@ async def search_all_channels(
     all_msg = []
     total_msg_count = 0
     channel_limit = limit
-    all_channels = config.db.table("channels").all()
+    all_channels = uc.get_channels_from_list_of_urls(db, channel_urls)
     for channel_info in all_channels[offset_channel:]:
         if (chat_type is not None) and (channel_info["type"] != chat_type):
             continue
+        if not channel_info["id"]:
+            print(f'{channel_info["url"]} has not id and access_hash yet. Retriving entity info from Telegram')
+            channel_info = await build_chat_info(client, channel_info["url"])
+            print('Inserting entity info and metadata in db')
+            uc.upsert_channel_common(db, models.ChannelCommon(**channel_info))
         channel_msg = await search_single_channel_batch(
             client, 
             channel_info, 
             search, 
-            start_date, end_date,
+            start_date, 
+            end_date,
             channel_limit, 
             offset_id)
         total_msg_count += len(channel_msg)
@@ -153,23 +160,32 @@ async def search_all_channels(
 
 
 async def search_all_channels_generator(
-    client, 
+    db: Session,
+    client,
     search, 
+    channel_urls,
     start_date: dt.datetime=None, 
     end_date: dt.datetime=None,
-    chat_type: str=None, country: str=None, 
+    chat_type: str=None, 
+    country: str=None, 
     limit: int=100, 
     offset_channel: int=0, 
-    offset_id: int=0
+    offset_id: int=0,
 ):  
     if not chat_type:
         chat_type = None
     if limit < 0:
         limit = None
-    all_channels = config.db.table("channels").all()
+    all_channels = uc.get_channels_from_list_of_urls(db, channel_urls)
+    
     for channel_info in all_channels[offset_channel:]:
         if (chat_type is not None) and (channel_info["type"] != chat_type):
             continue
+        if not channel_info["id"]:
+            print(f'{channel_info["url"]} has not id and access_hash yet. Retriving entity info from Telegram')
+            channel_info = await build_chat_info(client, channel_info["url"])
+            print('Inserting entity info and metadata in db')
+            uc.upsert_channel_common(db, models.ChannelCommon(**channel_info))
         entity = types.InputPeerChannel(
             channel_id=int(channel_info["id"]),
             access_hash=channel_info["access_hash"]
@@ -186,9 +202,9 @@ async def search_all_channels_generator(
                 continue
             if start_date and message["date"] < start_date.replace(tzinfo=pytz.UTC):
                 break
-            message["peer_id"]["channel_url"] = channel_info["identifier"]
+            message["peer_id"]["channel_url"] = channel_info["url"]
             message["chat_type"] = channel_info["type"]
-            message["country"] = channel_info.get("country")
+            message["country"] = channel_info.get("location")
             yield parse_raw_message(message)
             
 
@@ -245,22 +261,22 @@ async def build_chat_info(tg_client, channel: str):
     )
     channel_id = int(full_channel["full_chat"]["id"])
     chat = full_channel["chats"][0]
-    ts = str(dt.datetime.utcnow())
+    ts = dt.datetime.utcnow()
     ch_type = "group" if (
         chat["megagroup"] or chat["gigagroup"]) else "channel"
     record = {
-        "identifier": channel,
         "id": channel_id,
+        "url": channel,
+        "username": chat["username"],
+        "type": ch_type,
+        "access_hash": chat["access_hash"],
         "about": full_channel["full_chat"]["about"],
         "title": chat["title"],
-        "participants_counts": full_channel["full_chat"][
+        "participants_count": full_channel["full_chat"][
             "participants_count"
         ],
-        "type": ch_type,
         "inserted_at": ts,
         "updated_at": ts,
-        "access_hash": chat["access_hash"],
-        "username": chat["username"],
         
     }
     return record
@@ -335,6 +351,44 @@ async def load_default_channels_in_db(
 
 
 TIME_INTERVAL_IN_SEC = 60*60
+
+
+async def update_chats_periodically(
+    db: Session, client, channel_urls, period=TIME_INTERVAL_IN_SEC
+):
+    while True:
+        for url in channel_urls:
+            print(f'Updating: {url}')
+            channel = uc.get_channel_by_url(db, url)
+            if channel:
+                channel = channel.to_dict()
+                print(channel)
+                if not channel["id"]:
+                    print(f'{url} has not id and access_hash yet. Retriving entity info from Telegram')
+                    channel = await build_chat_info(client, url)
+                    print('Inserting entity info and metadata in db')
+                    uc.upsert_channel_common(db, models.ChannelCommon(**channel))
+                    print(channel)
+            if not channel:  # should never happen this
+                continue  
+            input_entity_info = {
+                "id": int(channel["id"]),
+                "access_hash": channel["access_hash"]
+            }
+            count = await count_peer_messages(
+                client, input_entity_info
+            )
+            info = await get_channel_or_megagroup(
+                client, input_entity_info
+            )
+            pts_count = info["full_chat"]["participants_count"]
+            # update channel in db
+            uc.update_channel_common(db, url, {
+                "messages_count": count["msg_count"],
+                "participants_count": pts_count
+            })
+            await asyncio.sleep(1)
+        await asyncio.sleep(period)
 
 
 async def update_message_counts(client):
