@@ -111,7 +111,7 @@ def get_channel_with_custom_fields(
 def insert_channel_common(
     db: Session, channel: schemas.ChannelCommon
 ):
-    db_channel = models.ChannelCommon(**channel)
+    db_channel = models.ChannelCommon(**dict(channel))
     db.add(db_channel)
     db.commit()
     db.refresh(db_channel)
