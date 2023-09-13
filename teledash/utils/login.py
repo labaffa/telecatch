@@ -12,6 +12,9 @@ from tinydb import Query
 from email_validator import validate_email
 from teledash.config import settings
 from fastapi.responses import RedirectResponse
+from teledash.utils.db import user as uu
+from sqlalchemy.orm import Session
+from teledash.db.db_setup import get_db
 
 
 manager = settings.MANAGER
@@ -39,25 +42,21 @@ def get_password_hash(password):
 
 
 @manager.user_loader()
-def get_user(username_or_email: str):
-    db = config.db.table("users")
-    User = Query()
+def get_user(
+    username_or_email: str
+):
+    db = next(get_db())
     try:
         validate_email(username_or_email)
-        user = db.search(
-            User.email == username_or_email
-        )
+        user = uu.get_user_by_email(db, username_or_email)
     except Exception:
-        user = db.search(
-            User.username == username_or_email
-        )
-    user = user[0] if user else None
-    if user and not user.get("disabled", False):
-        return models.UserInDB(**user)
+        user = uu.get_user_by_username(db, username_or_email)
+    if user and not user.to_dict().get("disabled", False):
+        return models.UserInDB(**user.to_dict())
     
 
 def authenticate_user(
-        username_or_email: str, password: str):
+        db: Session, username_or_email: str, password: str):
     user = get_user(username_or_email)
     if not user:
         return False
@@ -100,7 +99,7 @@ def create_refresh_token(
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(reuseable_oauth)]
+    token: Annotated[str, Depends(reuseable_oauth)],
 ) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
