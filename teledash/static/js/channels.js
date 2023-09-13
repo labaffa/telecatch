@@ -5,6 +5,9 @@ const form = document.querySelector('form');
 
 
 function showChannels(data, title='Collection Title'){
+  if (!data.length){
+    return 
+  }
   $('#results-table').html("");
     let columns = []
     $.each( data[0], function( key, value ) {
@@ -13,7 +16,7 @@ function showChannels(data, title='Collection Title'){
       my_item.title = key;
       columns.push(my_item);
 });
-
+  try {
     $('#results-table').DataTable({
       "binfo": true,
       "sDom": '<"header"i>t<"Footer">',
@@ -24,7 +27,9 @@ function showChannels(data, title='Collection Title'){
       data: data,
       "columns": columns
     });
-    
+  } catch(err){
+    console.log(err)
+  }
 };
 
 
