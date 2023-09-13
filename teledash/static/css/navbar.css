@@ -1,0 +1,39 @@
+nav {
+    min-height: 50px;
+    padding: 5px;
+}
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+nav li {
+    color: #5e7c9a;
+    margin: 5px;
+    padding: 1px;
+    display: inline;
+    background-color: #ffffff;
+}
+nav a {
+    
+    color: #5e7c9a;
+    text-decoration: none;
+}
+nav a:hover {
+    color: #8D35D1;
+}
+
+  .left {
+    float: left;
+  }
+  .right {
+    float: right;
+  }
+  
+  /* nav li a {
+    display: block;
+    padding: 8px;
+    background-color: #dddddd;
+  } */
