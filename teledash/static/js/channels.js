@@ -470,8 +470,12 @@ $(window).on('load', function(){
     .catch((err) => {
       console.log('Error: ', err);
     });
-    if (window.activeCollection){
+    try{
       showCollectionInTable(window.activeCollection);
+    } catch(error) {
+      console.log(error)
+    }
+    if (window.activeCollection){
       showActiveCollection();
     }
 
