@@ -6,7 +6,6 @@ from teledash import models
 from uuid import uuid4
 from teledash import config
 from tinydb import Query
-from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -19,7 +18,10 @@ from teledash.db.db_setup import get_db
 from teledash.utils.db import user as uu
 from teledash.utils.db import tg_client as ut
 from teledash.db import models as db_models
-
+try:
+    from typing import Annotated
+except Exception:
+    from typing_extensions import Annotated
 
 user_db = config.db.table("users")
 User = Query()

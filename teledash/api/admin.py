@@ -1,11 +1,14 @@
 from fastapi import APIRouter
 from tinydb import Query
 from teledash import models
-from typing import Annotated, List
 from teledash import config
-import fastapi
+from typing import List
 from email_validator import validate_email
 from teledash.utils.admin import set_disabled
+try:
+    from typing import Annotated
+except Exception:
+    from typing_extensions import Annotated
 
 
 admin_router = APIRouter()

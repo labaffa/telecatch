@@ -2,7 +2,6 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Union
-from typing_extensions import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from teledash import models
@@ -15,7 +14,10 @@ from fastapi.responses import RedirectResponse
 from teledash.utils.db import user as uu
 from sqlalchemy.orm import Session
 from teledash.db.db_setup import get_db
-
+try:
+    from typing import Annotated
+except Exception:
+    from typing_extensions import Annotated
 
 manager = settings.MANAGER
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
