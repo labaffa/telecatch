@@ -7,6 +7,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
         <link rel="stylesheet/less" type="text/css" href="{{ url_for('static', path='/css/style.less') }}">
+        <link rel="stylesheet/less" type="text/css" href="{{ url_for('static', path='/css/navbar.css') }}">
         <link rel="stylesheet/less" type="text/css" href="{{ url_for('static', path='/css/clients.css') }}">
         <script src="https://cdn.jsdelivr.net/npm/less" ></script>
         <!-- Specify body min-height to fill the page if not full already -->
@@ -20,8 +21,10 @@
     </head>
 
 <body class="d-flex flex-column">
-    <div class="d-flex">
+    {% include "explorer/navbar.html" %}
+    <div class="d-flex justify-content-center">
         <div id="clients-list" class="container bordered padded">
+            <h3>List of registered phone numbers</h3>
             <ul>
                 {% for client in clients %}
                     <li> {{client.phone}}</li>
@@ -30,7 +33,7 @@
         </div>
         <div id="client-form-container" class="container bordered padded">
             <form id="clientForm" >
-                <h2>Register Telegram Account</h2>
+                <h3>Register Telegram Account</h3>
                 <p id="clientStatus"></p>
                 <div class="field-wrap">
                     <label>
@@ -50,8 +53,8 @@
                     </label>
                     <input name='api_hash' type='text' placeholder='123456'>
                 </div>
-                <button id="clientSubmit" type="submit" class="button button-block"/>Register account</button>
             </form>
+            <button id="clientSubmit" type="submit" class="button button-block"/>Register account</button>
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
