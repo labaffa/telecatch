@@ -62,8 +62,8 @@ class Settings(BaseSettings):
     JWT_REFRESH_SECRET_KEY: str = config(
         "JWT_REFRESH_SECRET_KEY", cast=str)
     ALGORITHM = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7   # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = (60 * 24 * 365) * 10  # 10 years
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = (60 * 24 * 365) * 10 
     # BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
     #     "http://localhost:3000"
     # ]
