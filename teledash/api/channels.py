@@ -61,7 +61,8 @@ async def info_of_channels_and_groups(
         "group_count": sum(
             1 for c in channels if c["type"] != "channel"),
         "participant_count": sum(
-            int(c["participants_count"]) for c in channels),
+            int(c["participants_count"]) 
+            for c in channels if c["participants_count"]),
         "msg_count": sum(
             int(c["messages_count"]) 
             for c in channels if c["messages_count"])

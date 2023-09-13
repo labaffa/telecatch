@@ -25,11 +25,11 @@ async def home(
         channels = uc.get_channel_collection(db, user.id, active_collection)
     else:
         channels = []
-    ch_meta = {
-        "channel_count": sum(1 for c in channels if c["type"] == "channel"),
-        "group_count": sum(1 for c in channels if c["type"] != "channel"),
-        "participant_count": sum(c["participants_count"] for c in channels),
-    }
+    # ch_meta = {
+    #     "channel_count": sum(1 for c in channels if c["type"] == "channel"),
+    #     "group_count": sum(1 for c in channels if c["type"] != "channel"),
+    #     "participant_count": sum(c["participants_count"] for c in channels),
+    # }
     channel_urls = [c["url"] for c in channels]
     user_clients_meta = ut.get_user_clients(db, user.id)
     
@@ -41,7 +41,7 @@ async def home(
     data = {
         "request": request, 
         "all_channels": config.DEFAULT_CHANNELS,
-        "channels_info": {"meta": ch_meta, "data": channels},
+        # "channels_info": {"meta": ch_meta, "data": channels},
         "user": user,
         "clients": clients,
         "active_client": active_client,
