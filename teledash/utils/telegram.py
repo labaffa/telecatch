@@ -10,6 +10,8 @@ from teledash import config
 import asyncio
 from tinydb import Query
 import fastapi
+from teledash.utils.db import tg_client as ut
+from sqlalchemy.orm import Session
 
 
 class NeedsCodeException(Exception):
@@ -118,7 +120,7 @@ async def first_login(phone, api_id, api_hash, code=None):
     )
     session_path = Path(config.SESSIONS_FOLDER).joinpath(
         session_id + '.session')
-    if code is not None:
+    if code:
         code_callback = lambda: int(code)
         max_attempts = 1
     else:
@@ -154,19 +156,30 @@ async def first_login(phone, api_id, api_hash, code=None):
     return client
 
 
-async def get_authenticated_client(client_id: str):
+async def is_client_authenticated(client_instance):
+    await client_instance.connect()
+    if await client_instance.is_user_authorized():
+        response = True
+    else:
+        response = False
+    if client_instance and hasattr(client_instance, "disconnect"):
+        client_instance.disconnect()
+    return response
+
+
+async def get_authenticated_client(
+    db: Session, client_id: str
+):
     session_path = Path(config.SESSIONS_FOLDER).joinpath(
         client_id
     )
-    try:
-        client_in_db = config.db.table("tg_clients").search(
-            Query().client_id == client_id
-        )[0]
-    except IndexError:
+    client_in_db = ut.get_client_meta(db, client_id)
+    if not client_in_db:
         raise fastapi.HTTPException(
             status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
             detail="client not present in db (not registered)"
         )
+    client_in_db = client_in_db.to_dict()
     if not client_in_db["authenticated"]:
         raise fastapi.HTTPException(
             status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
@@ -179,7 +192,14 @@ async def get_authenticated_client(client_id: str):
             str(session_path), 
             client_in_db["api_id"], 
             client_in_db["api_hash"], 
-            loop=loop)
+            loop=loop
+        )
+        """ client_authenticated = await is_client_authenticated(client)
+        if not client_authenticated:
+            raise fastapi.HTTPException(
+                status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
+                detail="client not authenticated"
+            ) """
         await client.start()
     except Exception as e:
         raise fastapi.HTTPException(
