@@ -17,6 +17,15 @@ from teledash.ui.home import home_router
 from teledash.api.admin import admin_router
 from teledash.utils.telegram import get_authenticated_client
 from teledash.ui import clients
+from teledash.api.user import router as user_router
+from teledash.ui.channels import router as channels_router
+from teledash.db.models import Base
+from teledash.db.db_setup import engine, get_db
+from teledash.utils.db import tg_client as ut
+
+
+Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI(
     title="TeleDash",
@@ -46,7 +55,7 @@ Channel = Query()
 
 @app.on_event("startup")
 async def startup_event():
-    TgStatus = Query()
+    """ TgStatus = Query()
 
     APP_DATA= config.db.table("telegram")
     default_item = APP_DATA.search(
@@ -80,14 +89,23 @@ async def startup_event():
             {"is_logged_in": False, "phone": None},
             TgStatus.session == "default"
         )
-
+ """
     app.state.clients = {}
-    for client_item in config.db.table("tg_clients").all():
+    db = next(get_db())
+    clients_meta = [
+        x[0].to_dict() for x in ut.get_clients_meta(db)
+    ]
+    
+
+    # TODO: this should be done when an user logs in, instead
+    # of loading all the clients at startup. 
+    for client_item in clients_meta:
         try:
-            idx = client_item["client_id"]
-            client = await get_authenticated_client(idx)
+            idx = client_item["id"]
+            client = await get_authenticated_client(db, idx)
             app.state.clients[idx] = client
-        except Exception:
+        except Exception as e:
+            print(e)
             pass
         # APP_DATA["is_logged_in"] = False
         # APP_DATA["phone"] = None
@@ -106,7 +124,11 @@ app.include_router(home_router)
 app.include_router(api_login_router)
 app.include_router(admin_router)
 app.include_router(clients.router)
+app.include_router(user_router)
+app.include_router(channels_router)
+
 
 app.add_exception_handler(
     config.NotAuthenticatedException, auth_exception_handler
 )
+
