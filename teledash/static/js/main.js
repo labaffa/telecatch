@@ -40,7 +40,7 @@ $('#submitButton').on("click", async function() {
     let country = null;
     let data_range = $('#data-range').val();
     let export_format = $('#export-format').val();
-    
+   
     
     window.search = search;
     window.start_date = start_date || null;
@@ -57,10 +57,11 @@ $('#submitButton').on("click", async function() {
     } */
     // Chiamata all'API con il valore dell'input
     window.tableMessages = [];
+    
     if (!window.data_range){
       callAPI(search, window.limit, 0, 0, 
         window.start_date, window.end_date, 
-        window.chat_type, window.country, window.activeClient, channelUrls);
+        window.chat_type, window.country, window.activeClient, window.channelUrls);
     } else {
       await export_search();
     }
@@ -298,12 +299,13 @@ async function export_search(){
     offset_id: 0,
     out_format: window.export_format,
     client_id: window.activeClient,
-    channel_urls: channelUrls,
-    },
-    traditional=true 
+    channel_urls: window.channelUrls,
+  },
+  traditional=true 
   );
-  var url = new URL('/api/stream_search', window.location.origin);
-  url.search = new URLSearchParams(params).toString();
+  // var url = new URL('/api/stream_search', window.location.origin);
+  // url.search = new URLSearchParams(params).toString();
+  
   
   fetch(`/api/stream_search?${queryString}`, {
     headers: {
