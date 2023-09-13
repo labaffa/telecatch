@@ -354,7 +354,7 @@ TIME_INTERVAL_IN_SEC = 60*60
 
 
 async def update_chats_periodically(
-    db: Session, client, channel_urls, period=TIME_INTERVAL_IN_SEC
+    db: Session, client, channel_urls, period=TIME_INTERVAL_IN_SEC, sleep_for_requests=3
 ):
     while True:
         for url in channel_urls:
@@ -387,7 +387,7 @@ async def update_chats_periodically(
                 "messages_count": count["msg_count"],
                 "participants_count": pts_count
             })
-            await asyncio.sleep(1)
+            await asyncio.sleep(sleep_for_requests)
         await asyncio.sleep(period)
 
 
