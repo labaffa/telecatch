@@ -8,6 +8,11 @@ var paginationSelector = '#pagination';
 var input = document.getElementById("inpt_search");
 var resultTableBody = document.querySelector("#results-table tbody");
 
+// let collection = window.activeCollection;
+// let collection_response = await fetch(`/api/channel_collection_by_title?collection_title=${collection}`).then((response) => response.json())
+// var channelUrls = collection_response.data.map(x => x.url);
+    
+
 
 $("#inpt_search").on('focus', function () {
 	$(this).parent('label').addClass('active');
@@ -20,6 +25,13 @@ $("#inpt_search").on('blur', function () {
 
 
 $('#submitButton').on("click", async function() {
+  try {
+    if (!window.activeClient){
+      throw new Error('No Telegram accounts registered on your account. Go to "Clients" page')
+    }
+    if (!window.activeCollection){
+      throw new Error('No channel collection saved on your account. Go to "Collections" page')
+    }
     $('#results-table').attr('data-page', 1);
     let search = $('#inpt_search').val();
     let start_date = $('#start-date').val();
@@ -28,7 +40,8 @@ $('#submitButton').on("click", async function() {
     let country = null;
     let data_range = $('#data-range').val();
     let export_format = $('#export-format').val();
-
+    
+    
     window.search = search;
     window.start_date = start_date || null;
     window.end_date = end_date || null;
@@ -37,6 +50,7 @@ $('#submitButton').on("click", async function() {
     window.data_range = parseInt(data_range);
     window.limit = window.data_range ? -1 : 40;
     window.export_format = export_format;
+    
     /* let limit = parseInt($('#inpt_limit').val(), 10) || 100;
     if (limit > 1000){
       limit = 1000;
@@ -46,10 +60,13 @@ $('#submitButton').on("click", async function() {
     if (!window.data_range){
       callAPI(search, window.limit, 0, 0, 
         window.start_date, window.end_date, 
-        window.chat_type, window.country, window.activeClient);
+        window.chat_type, window.country, window.activeClient, channelUrls);
     } else {
       await export_search();
     }
+  } catch (error) {
+    window.alert(error)
+  }
   });
 
 /* const submitButton = document.getElementById("submitButton");
@@ -61,18 +78,39 @@ submitButton.addEventListener("click", function() {
 
 
 function callAPI(
-  value, limit=40, 
-  offset_channel=0, offset_id=0,
-  start_date, end_date, chat_type,
-  country, client_id
+  value, 
+  limit=40, 
+  offset_channel=0, 
+  offset_id=0,
+  start_date, 
+  end_date, 
+  chat_type,
+  country, 
+  client_id,
+  channel_urls
   ) {
   emptyTableHeight = 30*rowsPerPage;
   resultTableBody.innerHTML = `<div class="container" style="height: ${emptyTableHeight}px;>
     <span class="loader centered">Loading...</span>
     </div>
     `;
+
+  let queryString = jQuery.param({
+     search: value,
+     limit: limit,
+     offset_channel: offset_channel,
+     offset_id: offset_id,
+     start_date: start_date,
+     end_date: end_date,
+     chat_type: chat_type,
+     country: country,
+     client_id: client_id,
+     channel_urls: channel_urls
+    },
+    traditional=true
+  );
   fetch(
-    `/api/search_channels?search=${value}&limit=${limit}&offset_channel=${offset_channel}&offset_id=${offset_id}&start_date=${start_date}&end_date=${end_date}&chat_type=${chat_type}&country=${country}&client_id=${client_id}`,
+    `/api/search_channels?${queryString}`,
     {
         headers: {
           'Cache-Control': 'no-cache'
@@ -80,7 +118,7 @@ function callAPI(
     )
     .then(response => response.json())
     .then(data => {
-      if (data.length == 0){
+      if (data.length == 0){ // no more data to show
         window.messagesDone = true;
       }
       else {
@@ -159,7 +197,7 @@ function callAPI(
           window.search, window.limit, 
           offset_channel, offset_id, 
           window.start_date, window.end_date,
-          window.chat_type, window.country, window.activeClient
+          window.chat_type, window.country, window.activeClient, channelUrls
           );
     }
 
@@ -249,7 +287,7 @@ $('#page-dw').click(function(e) {
 }); */
 
 async function export_search(){
-  var params = { 
+  let queryString = jQuery.param({ 
     search: window.search, 
     start_date: window.start_date,
     end_date: window.end_date,
@@ -259,12 +297,15 @@ async function export_search(){
     offset_channel: 0,
     offset_id: 0,
     out_format: window.export_format,
-    client_id: window.activeClient
-  };
+    client_id: window.activeClient,
+    channel_urls: channelUrls,
+    },
+    traditional=true 
+  );
   var url = new URL('/api/stream_search', window.location.origin);
   url.search = new URLSearchParams(params).toString();
   
-  fetch(url, {
+  fetch(`/api/stream_search?${queryString}`, {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache',
@@ -405,7 +446,7 @@ async function fillPtsCounts(eleId){
   window.channelsInfo.data.forEach((channel) => {
       select.append(
         $('<option>', {
-          text: `${channel.title}:  ${channel.participants_counts}`,
+          text: `${channel.title}:  ${channel.participants_count}`,
           value: channel.identifier,
         })
       );
@@ -413,7 +454,11 @@ async function fillPtsCounts(eleId){
 };
 
 async function updateMonitor(){
-  fetch(`/api/channels_info?is_joined=true`, 
+  let queryString = jQuery.param(
+    {channel_urls: window.channelUrls},
+    traditional=true
+  )
+  fetch(`/api/channels_info?${queryString}`, 
       {
           headers: {'Cache-Control': 'no-cache'}
       }
@@ -616,6 +661,7 @@ function createHistogramFromMessages(data) {
       .attr("y",  1); */
   
 };
+
 
 $(document).ready(function() {
   // Inizializza la paginazione
