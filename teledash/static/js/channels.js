@@ -244,12 +244,14 @@ async function fetchStatus(uid) {
 };  
 
 $('#collection-submit').click(function(ev){
-  $('#collection-submit').prop('disabled', true);
+  // $('#collection-submit').prop('disabled', true);
+  $(':button').prop('disabled', true);
   ev.preventDefault();
-
+  
   let form = document.getElementById('collection-form');
   let data = new FormData(form);
   var collectionTitle = data.get('collection-title');
+  $('#collection-status').text(`Saving collection with title: ${collectionTitle}`);
   let channels = window.dataTable.rows.map(function(x) {
     return x.url.trim();
   });
@@ -312,6 +314,7 @@ $('#collection-submit').click(function(ev){
         console.log("saved collection in user account")
         console.log(data)
         $('#collection-submit').prop('disabled', false);
+        $(':button').prop('disabled', false);
         $('#collection').hide();
         if (!window.activeCollection){
           setActiveCollection(collectionTitle);
@@ -343,6 +346,7 @@ $('#collection-submit').click(function(ev){
       .catch((err) => {
 
         $('#collection-submit').prop('disabled', false);
+        $(':button').prop('disabled', false);
         window.alert(err)
         console.log('Error: ', err);
       });
