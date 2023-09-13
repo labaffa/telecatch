@@ -8,7 +8,14 @@ function showChannels(data, title='Collection Title'){
   if (!data.length){
     return 
   }
-  $('#results-table').html("");
+  // $('#results-table').html("");
+  $('#results-table_wrapper').remove();
+  $('#table-container').html(`<table id="results-table" class="display" cellspacing="0" width="100%">
+  </table>`);
+  // if (window.dtable){
+  //   window.dtable.destroy();
+  // }
+
     let columns = []
     $.each( data[0], function( key, value ) {
       var my_item = {};
@@ -17,7 +24,7 @@ function showChannels(data, title='Collection Title'){
       columns.push(my_item);
 });
   try {
-    $('#results-table').DataTable({
+    window.dtable = $('#results-table').DataTable({
       "binfo": true,
       "sDom": '<"header"i>t<"Footer">',
       "oLanguage": {
@@ -272,8 +279,14 @@ $('#collection-submit').click(function(ev){
     },
     body: initPayload
   }).then(
-    (response) => response.json()
+    (response) => {
+      if (response.ok) {
+        return response.json()
+      }
+      throw new Error('Error inserting channels in db. Collection not saved')
+      }
   ).then((data) => {
+    
     console.log("channels initiated if not already")
     console.log(data)
     fetch(`/api/channel_collection?client_id=${window.activeClient}`,{
