@@ -28,7 +28,6 @@ $('.form').find('input, textarea').on('keyup blur focus', function (e) {
   });
   
   $('.tab a').on('click', function (e) {
-    
     e.preventDefault();
     
     $(this).parent().addClass('active');
