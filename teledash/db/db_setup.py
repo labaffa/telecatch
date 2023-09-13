@@ -7,7 +7,7 @@ import os
 
 SQLALCHEMY_DATABASE_URL = (
     'sqlite:///' + 
-    + '{os.path.join(config.SESSIONS_FOLDER, "teledash.db")}'
+    f'{os.path.join(config.SESSIONS_FOLDER, "teledash.db")}'
 )
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
@@ -25,7 +25,9 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
-async def get_db():
-    async with SessionLocal() as db:
+def get_db():
+    db = SessionLocal()
+    try:
         yield db
-        await db.commit()
+    finally:
+        db.close()
