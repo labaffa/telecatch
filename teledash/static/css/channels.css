@@ -1,0 +1,74 @@
+:root {
+    --gray5: rgb(229, 229, 234);
+    --color: #000;
+    --borderLightest: #fefefe;
+    --borderDarkest: rgb(98, 98, 104);
+    --borderDark: rgb(174, 174, 178);
+}
+
+/* body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    background: rgb(242, 242, 247);
+} */
+
+#root {
+    height: 100vh;
+    max-height: 600px;
+    border: 1px solid rgb(209, 209, 214);
+    /* background: #fefefe; */
+    width: calc(100% - 20px);
+    max-width: 1120px;
+    gap: 20px 20px;
+}
+
+.center {
+    /* display: flex; */
+    -webkit-box-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    justify-content: center;
+    height: 100%;
+
+
+}
+
+.ellipsis {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.btn-style{
+    background-color: var(--gray5);
+    padding: 7px 20px 5px;
+    border: none;
+    color: var(--color);
+    font-size: 12px;
+    box-shadow: inset 1px 1px 0px 1px var(--borderLightest), inset 0 0 0 1px var(--borderDark), 1px 1px 0 0px var(--borderDarkest);
+}
+
+button:not(:disabled) {
+    cursor: pointer;
+}
+
+#results-table_wrapper tbody *{
+    background-color: #5e7c9a!important;
+}
+
+#collections {
+    
+    gap: 5px 5px;
+    justify-content: space-between;
+}
+
+.padded-15 {
+    padding: 15px;
+}
+
+.border-light-1 {
+    border: 1px solid rgb(209, 209, 214);
+    
+}
