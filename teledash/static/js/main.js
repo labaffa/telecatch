@@ -424,7 +424,7 @@ async function fillMsgCounts(eleId){
   window.channelsInfo.data.forEach((channel) => {
       select.append(
         $('<option>', {
-          text: `${channel.title}:  ${channel.count}`,
+          text: `${channel.title}:  ${channel.messages_count}`,
           value: channel.identifier,
         })
       );
