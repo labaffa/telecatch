@@ -11,6 +11,12 @@ def get_user(db: Session, user_id: int):
     return result.scalar_one_or_none()
 
 
+def get_all_usernames(db: Session):
+    query = select(models.User.username)
+    result = db.execute(query)
+    return result.mappings().all()
+
+
 def get_user_by_email(db: Session, email: str):
     query = select(models.User)\
         .where(models.User.email == email)

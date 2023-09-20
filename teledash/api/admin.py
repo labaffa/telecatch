@@ -1,10 +1,13 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from tinydb import Query
 from teledash import models
 from teledash import config
+from teledash.utils.db import user as uu
 from typing import List
+from sqlalchemy.orm import Session
 from email_validator import validate_email
 from teledash.utils.admin import set_disabled
+from teledash.db.db_setup import get_db
 try:
     from typing import Annotated
 except Exception:
@@ -20,17 +23,15 @@ admin_router = APIRouter()
     response_model=List[dict]
 )
 async def get_a_list_of_registered_users(
-    only_active: bool = False
+    only_active: bool = False,
+    db: Session = Depends(get_db)
 ):  
-    User = Query()
-    if only_active:
-        result = config.db.table("users").search(
-            User.disabled == False
-        )
-    else:
-        result = config.db.table("users").all()
-    return result
-
+    try:
+        response = uu.get_all_usernames(db)
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
 
 @admin_router.put(
     '/disable_account',
