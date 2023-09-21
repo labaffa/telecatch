@@ -5,6 +5,7 @@ from teledash import models as schemas
 from typing import Union, List, Iterable
 from sqlalchemy import func
 
+
 def get_channel_by_url(
     db: Session, 
     url: Union[str, None]=None, 
@@ -24,11 +25,11 @@ def get_channel_by_url(
         models.ChannelCommon
         )\
         .where(*filters)
-    result = db.execute(query)
+    raw_result = db.execute(query)
+    result = raw_result.mappings().all()
+
     if url is not None:
-        result = result.scalar_one_or_none()
-    else:
-        result = result.fetchall()
+        result = result[0] if result else result
     return result
 
 
