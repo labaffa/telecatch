@@ -82,23 +82,28 @@ async def read_search_channel(
             x["channel_url"] 
             for x in uc.get_channel_collection(db, user.id, title)
         ]
-    response = await search_all_channels(
-        db=db,
-        client=tg_client, 
-        search=search,
-        channel_urls=channel_urls,
-        start_date=start_date,
-        end_date=end_date,
-        chat_type=chat_type,
-        country=country,
-        limit=limit,
-        offset_channel=offset_channel,
-        offset_id=offset_id
-    )
-    return JSONResponse(content=jsonable_encoder(
-        response, custom_encoder={
-        bytes: lambda v: base64.b64encode(v).decode('utf-8')})
-    )
+    try:
+        response = await search_all_channels(
+            db=db,
+            client=tg_client, 
+            search=search,
+            channel_urls=channel_urls,
+            start_date=start_date,
+            end_date=end_date,
+            chat_type=chat_type,
+            country=country,
+            limit=limit,
+            offset_channel=offset_channel,
+            offset_id=offset_id
+        )
+        return JSONResponse(content=jsonable_encoder(
+            response, custom_encoder={
+            bytes: lambda v: base64.b64encode(v).decode('utf-8')})
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=str(e)
+        )
 
 
 @search_router.get("/api/stream_search")
