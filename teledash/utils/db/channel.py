@@ -36,9 +36,9 @@ def get_channels_from_list_of_urls(
     db: Session,
     urls: Iterable[str]
 ):
-    filters = [
-        models.ChannelCommon.url.in_(urls)
-    ]
+    filters = []
+    if urls:
+        filters.append(models.ChannelCommon.url.in_(urls))
     query = select(
         models.ChannelCommon.username,
         models.ChannelCommon.title,
