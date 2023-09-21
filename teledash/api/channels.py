@@ -19,6 +19,9 @@ import time
 from uuid import UUID, uuid4
 import asyncio
 import json
+from teledash import config
+from sqlalchemy import delete
+from teledash.db import models as db_models
 
 
 channel_router = APIRouter()
@@ -71,6 +74,17 @@ async def info_of_channels_and_groups(
     return {"meta": meta, "data": data}
 
 
+@channel_router.get("/api/channels_custom_info")
+async def info_of_channels_custom(
+    db: Session = Depends(get_db),
+    channel_urls: List[str]=Query(default=[]),
+    user = Depends(config.settings.MANAGER)
+):
+    channels = uc.get_channels_custom_from_list_of_urls(db, user.id, channel_urls)
+    data = [schemas.ChannelCustom(**c) for c in channels]
+    return data
+
+
 @channel_router.post(
     "/api/channel", 
     response_model=models.ChannelCommon
@@ -101,33 +115,75 @@ async def add_channel(
 
 
 @channel_router.delete(
-    "/api/channel", response_model=models.Channel
+    "/api/channel_common", 
+    # response_model=models.Channel
 )
-async def delete_channel_from_db(
-    channel: models.ChannelCreate
+async def delete_channel_common_from_db(
+    channel: models.ChannelCreate,
+    db: Session = Depends(get_db)
 ):
+    channel_in_db = uc.get_channel_by_url(db, channel.url)
     
-    channels = config.db.table("channels")
-    Ch = Query()
-    
-    channel_in_db = channels.search(
-        Ch.identifier == channel.identifier
-    )
-    if channel_in_db:
-        channel_in_db = channel_in_db[0]
-    if (not channel_in_db) or (not channel_in_db["is_joined"]):
+    if not channel_in_db:
         raise HTTPException(
-            status_code=400, detail="Channel is not registered"
+            status_code=400, 
+            detail="Channel is not present in the database"
         )
-    input_entity_info = {
-        "id": int(channel_in_db["id"]),
-        "access_hash": channel_in_db["access_hash"]
+    # if (not channel_in_db) or (not channel_in_db["is_joined"]):
+    #     raise HTTPException(
+    #         status_code=400, detail="Channel is not registered"
+    #     )
+    
+    # input_entity_info = {
+    #     "id": int(channel_in_db["id"]),
+    #     "access_hash": channel_in_db["access_hash"]
+    # }
+    # await leave_channel(tg_client, input_entity_info)
+    # left_channel = channels.search(
+    #     Ch.identifier == channel.identifier
+    # )[0]
+    try:
+        stmt = delete(db_models.ChannelCommon)\
+            .where(db_models.ChannelCommon.url == channel.url)
+        db.execute(stmt)
+        db.commit()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "status": "ok", "data": channel_in_db
     }
-    await leave_channel(tg_client, input_entity_info)
-    left_channel = channels.search(
-        Ch.identifier == channel.identifier
-    )[0]
-    return models.Channel(**(left_channel))
+
+
+@channel_router.delete(
+    "/api/channel_custom", 
+    # response_model=models.Channel
+)
+async def delete_channel_custom_from_db(
+    channel: models.ChannelCreate,
+    db: Session = Depends(get_db),
+    user = Depends(config.settings.MANAGER)
+):
+    channel_in_db = uc.get_channel_custom_by_url(db, channel.url, user.id)
+    
+    if not channel_in_db:
+        raise HTTPException(
+            status_code=400, 
+            detail="Channel is not present in your account's channels"
+        )
+    try:
+        stmt = delete(db_models.ChannelCustom)\
+            .where(
+                db_models.ChannelCustom.channel_url == channel.url,
+                db_models.ChannelCustom.user_id == user.id
+            )
+        db.execute(stmt)
+        db.commit()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "status": "ok", "data": channel_in_db
+    }
+
 
 
 @channel_router.put("/api/chat_message_count")
@@ -564,7 +620,7 @@ async def upsert_many_channels_to_common_and_custom_tables(
                 db, channel.channel_url
             )
             if not channel_common_in_db:
-                channel_common = schemas.ChannelCommon(url=channel.channel_url)
+                channel_common = schemas.ChannelCommon(url=channel.channel_url.lower())
                 uc.insert_channel_common(db, channel_common)
             
             channel_custom = schemas.ChannelCustom(**dict(channel), user_id=user.id)
