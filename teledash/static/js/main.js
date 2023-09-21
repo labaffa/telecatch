@@ -117,7 +117,13 @@ function callAPI(
           'Cache-Control': 'no-cache'
         }}
     )
-    .then(response => response.json())
+    .then((response) => {
+      if (response.ok) {
+        return response.json()
+      }
+      throw new Error('Something went wrong but I dont know what')
+    }
+    )
     .then(data => {
       if (data.length == 0){ // no more data to show
         window.messagesDone = true;
