@@ -138,17 +138,25 @@ async def search_all_channels(
             continue
         if not channel_info["id"]:
             print(f'{channel_info["url"]} has not id and access_hash yet. Retriving entity info from Telegram')
-            channel_info = await build_chat_info(client, channel_info["url"])
-            print('Inserting entity info and metadata in db')
-            uc.upsert_channel_common(db, models.ChannelCommon(**channel_info))
-        channel_msg = await search_single_channel_batch(
-            client, 
-            channel_info, 
-            search, 
-            start_date, 
-            end_date,
-            channel_limit, 
-            offset_id)
+            try:
+                channel_info = await build_chat_info(client, channel_info["url"])
+                print('Inserting entity info and metadata in db')
+                uc.upsert_channel_common(db, models.ChannelCommon(**channel_info))
+            except Exception as e:
+                print("Not able to get and save chat info because of error: " + str(e))
+        try: 
+            channel_msg = await search_single_channel_batch(
+                client, 
+                channel_info, 
+                search, 
+                start_date, 
+                end_date,
+                channel_limit, 
+                offset_id
+                )
+        except Exception as e:
+            print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
+            channel_msg = []
         total_msg_count += len(channel_msg)
         offset_id = 0
         all_msg.extend(channel_msg)
@@ -183,30 +191,37 @@ async def search_all_channels_generator(
             continue
         if not channel_info["id"]:
             print(f'{channel_info["url"]} has not id and access_hash yet. Retriving entity info from Telegram')
-            channel_info = await build_chat_info(client, channel_info["url"])
-            print('Inserting entity info and metadata in db')
-            uc.upsert_channel_common(db, models.ChannelCommon(**channel_info))
-        entity = types.InputPeerChannel(
-            channel_id=int(channel_info["id"]),
-            access_hash=channel_info["access_hash"]
-        )
-        async for message in client.iter_messages(
-            entity, 
-            search=search, 
-            limit=limit, 
-            offset_id=offset_id,
-            offset_date=end_date
-        ):
-            message = message.to_dict()
-            if message["_"] != "Message":
-                continue
-            if start_date and message["date"] < start_date.replace(tzinfo=pytz.UTC):
-                break
-            message["peer_id"]["channel_url"] = channel_info["url"]
-            message["chat_type"] = channel_info["type"]
-            message["country"] = channel_info.get("location")
-            yield parse_raw_message(message)
+            try:
+                channel_info = await build_chat_info(client, channel_info["url"])
+                print('Inserting entity info and metadata in db')
+                uc.upsert_channel_common(db, models.ChannelCommon(**channel_info))
+            except Exception as e:
+                print("Not able to get and save chat info because of error: " + str(e))
+        try:
+            entity = types.InputPeerChannel(
+                channel_id=int(channel_info["id"]),
+                access_hash=channel_info["access_hash"]
+            )
+            async for message in client.iter_messages(
+                entity, 
+                search=search, 
+                limit=limit, 
+                offset_id=offset_id,
+                offset_date=end_date
+            ):
+                message = message.to_dict()
+                if message["_"] != "Message":
+                    continue
+                if start_date and message["date"] < start_date.replace(tzinfo=pytz.UTC):
+                    break
+                message["peer_id"]["channel_url"] = channel_info["url"]
+                message["chat_type"] = channel_info["type"]
+                message["country"] = channel_info.get("location")
+                yield parse_raw_message(message)
+        except Exception as e:
+            print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
             
+
 
 async def get_channel_or_megagroup(
         client, channel: Union[str, dict, int]):
@@ -360,7 +375,7 @@ async def update_chats_periodically(
         for url in channel_urls:
             print(f'Updating: {url}')
             channel = uc.get_channel_by_url(db, url)
-            if channel:
+            if channel:  # this function works just on already initiated channels (url in db)
                 channel = channel.to_dict()
                 print(channel)
                 if not channel["id"]:
@@ -382,8 +397,8 @@ async def update_chats_periodically(
                 client, input_entity_info
             )
             pts_count = info["full_chat"]["participants_count"]
-            # update channel in db
-            uc.update_channel_common(db, url, {
+            # update channel in db. channel["url"] should be ok because they are initiated
+            uc.update_channel_common(db, channel["url"], {
                 "messages_count": count["msg_count"],
                 "participants_count": pts_count
             })
