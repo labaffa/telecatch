@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from teledash.db import models 
 from teledash import models as schemas
 from typing import Union, List, Iterable
-
+from sqlalchemy import func
 
 def get_channel_by_url(
     db: Session, 
@@ -12,7 +12,7 @@ def get_channel_by_url(
 ):
     filters = []
     if url is not None:
-        filters.append(models.ChannelCommon.url == url)
+        filters.append(func.lower(models.ChannelCommon.url) == url.lower())
 
     # TODO: is_joined must be used with ChannelCustom
     # if is_joined is not None:
@@ -61,12 +61,39 @@ def get_channels_from_list_of_urls(
     return result.mappings().all()
 
 
+def get_channels_custom_from_list_of_urls(
+    db: Session,
+    user_id: int,
+    urls: Iterable[str]
+):
+    filters = [
+        models.ChannelCustom.user_id == user_id
+    ]
+    if urls:
+        filters.append(models.ChannelCustom.channel_url.in_(urls))
+    query = select(
+        models.ChannelCustom.channel_url,
+        models.ChannelCustom.category,
+        models.ChannelCustom.language,
+        models.ChannelCustom.location,
+        models.ChannelCustom.is_joined,
+        models.ChannelCustom.user_id
+        )\
+        .where(*filters)
+        # .join(
+        #     models.ChannelCustom,
+        #     models.ChannelCommon.id == models.ChannelCustom.channel_id
+        # )\
+    result = db.execute(query)
+    return result.mappings().all()
+
+
 def get_channel_custom_by_url(db: Session, url: str, user_id: int):
     query = select(
         models.ChannelCustom
         )\
         .where(
-            models.ChannelCustom.channel_url == url,
+            func.lower(models.ChannelCustom.channel_url) == url.lower(),
             models.ChannelCustom.user_id == user_id
         )
     raw_result = db.execute(query)
@@ -123,10 +150,12 @@ def upsert_channel_common(
 ):
     channel_in_db = get_channel_by_url(db, channel.url)
     if channel_in_db:
+        channel.url = channel_in_db["url"]  # backward compatibility to 'not lower' channels
         db.query(models.ChannelCommon)\
             .filter_by(url=channel.url)\
             .update(dict(channel))
     else:
+        channel.url = channel.url.lower()  # new channels are all lowered
         channel_common = models.ChannelCommon(**dict(channel))
         db.add(channel_common)
     db.commit()
@@ -164,6 +193,7 @@ def update_messages_count(
 def update_channel_common(
     db: Session, channel_url: str, update_dict: dict
 ):
+    
     db.query(models.ChannelCommon)\
         .filter_by(url=channel_url)\
         .update(update_dict)
@@ -184,12 +214,19 @@ def insert_channel_custom(
 def upsert_channel_custom(
     db: Session, channel: schemas.ChannelCustom      
 ):
+    # channel.channel_url = channel.channel_url.lower()
     channel_in_db = get_channel_custom_by_url(db, channel.channel_url, channel.user_id)
+    
     if channel_in_db:
+        # this is due to 'select(ChannelCustom)' in query. TODO: fix this
+        channel_in_db = next(v.to_dict() for k, v in channel_in_db.items())
+
+        channel.channel_url = channel_in_db["channel_url"]  # to not remove not lowered ones
         db.query(models.ChannelCustom)\
-            .filter_by(channel_url=channel.channel_url)\
+            .filter_by(channel_url=channel_in_db["channel_url"])\
             .update(dict(channel))
     else:
+        channel.channel_url = channel.channel_url.lower()  # new channels will be lower 
         channel_custom = models.ChannelCustom(**dict(channel))
         db.add(channel_custom)
     db.commit()
@@ -258,7 +295,7 @@ def insert_channel_collection(
 ):
     db_channels_collection = [
         models.ChannelCollection(
-            user_id=user_id, collection_title=collection_title, channel_url=channel.url
+            user_id=user_id, collection_title=collection_title, channel_url=channel.url.lower()
         )
         for channel in channels
     ]
@@ -291,11 +328,11 @@ def get_channel_collection(
         )\
         .join(
             models.ChannelCollection,
-            models.ChannelCommon.url == models.ChannelCollection.channel_url
+            func.lower(models.ChannelCommon.url) == func.lower(models.ChannelCollection.channel_url)
         )\
         .join(
             models.ChannelCustom,
-            models.ChannelCustom.channel_url == models.ChannelCollection.channel_url
+            func.lower(models.ChannelCustom.channel_url) == func.lower(models.ChannelCollection.channel_url)
         )\
         .where(*filters)
     result = db.execute(query)
