@@ -22,14 +22,24 @@ def get_channel_by_url(
     #     )
     
     query = select(
-        models.ChannelCommon
+        models.ChannelCommon.id,
+        models.ChannelCommon.access_hash,
+        models.ChannelCommon.url,
+        models.ChannelCommon.username,
+        models.ChannelCommon.type,
+        models.ChannelCommon.title,
+        models.ChannelCommon.about,
+        models.ChannelCommon.messages_count,
+        models.ChannelCommon.participants_count,
+        models.ChannelCommon.inserted_at,
+        models.ChannelCommon.updated_at,
         )\
         .where(*filters)
     raw_result = db.execute(query)
     result = raw_result.mappings().all()
 
     if url is not None:
-        result = result[0] if result else result
+        result = result[0] if result else None
     return result
 
 
