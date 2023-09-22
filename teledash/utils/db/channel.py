@@ -49,7 +49,9 @@ def get_channels_from_list_of_urls(
 ):
     filters = []
     if urls:
-        filters.append(models.ChannelCommon.url.in_(urls))
+        # we search case insensitively
+        urls = [x.lower() for x in urls]  
+        filters.append(func.lower(models.ChannelCommon.url).in_(urls))
     query = select(
         models.ChannelCommon.username,
         models.ChannelCommon.title,
@@ -81,7 +83,9 @@ def get_channels_custom_from_list_of_urls(
         models.ChannelCustom.user_id == user_id
     ]
     if urls:
-        filters.append(models.ChannelCustom.channel_url.in_(urls))
+        # we search case insensitively
+        urls = [x.lower() for x in urls]
+        filters.append(func.lower(models.ChannelCustom.channel_url).in_(urls))
     query = select(
         models.ChannelCustom.channel_url,
         models.ChannelCustom.category,
@@ -120,7 +124,7 @@ def get_channel_with_custom_fields(
     is_joined: Union[bool, None]=None
 ):
     filters = [
-        models.ChannelCommon.url == url,
+        func.lower(models.ChannelCommon.url) == url.lower(),
         models.ChannelCustom.user_id == user_id
     ]
     if is_joined is not None:
@@ -140,7 +144,7 @@ def get_channel_with_custom_fields(
         )\
         .join(
             models.ChannelCustom, 
-            models.ChannelCommon.url == models.ChannelCustom.channel_url)\
+            func.lower(models.ChannelCommon.url) == func.lower(models.ChannelCustom.channel_url))\
         .where(*filters)
     result = db.execute(query)
     return result.mappings().all()
@@ -149,6 +153,7 @@ def get_channel_with_custom_fields(
 def insert_channel_common(
     db: Session, channel: schemas.ChannelCommon
 ):
+    channel.url = channel.url.lower()  # be sure new channels are lower
     db_channel = models.ChannelCommon(**dict(channel))
     db.add(db_channel)
     db.commit()
@@ -177,6 +182,7 @@ def upsert_channel_common(
 def upsert_many_channel_common(
     db: Session, channels: List[schemas.ChannelCommon]
 ):
+    # TODO: adapt to case insensitive urls (this function is not used now)
     for channel in channels:
         channel_in_db = get_channel_by_url(db, channel.url)
         if channel_in_db:
@@ -215,6 +221,7 @@ def update_channel_common(
 def insert_channel_custom(
     db: Session, channel: schemas.ChannelCustom
 ):
+    channel.channel_url = channel.channel_url.lower()
     db_channel = models.ChannelCustom(**dict(channel))
     db.add(db_channel)
     db.commit()
