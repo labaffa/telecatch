@@ -330,7 +330,8 @@ def get_channel_collection(
 ):
     filters = [
         models.ChannelCollection.user_id == user_id,
-        models.ChannelCollection.collection_title == collection_title
+        models.ChannelCollection.collection_title == collection_title,
+        models.ChannelCustom.user_id == user_id
     ]
     query = select(
         models.ChannelCollection.channel_url,
