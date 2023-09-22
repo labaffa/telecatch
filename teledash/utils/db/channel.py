@@ -342,7 +342,9 @@ def get_channel_collection(
         models.ChannelCommon.messages_count,
         models.ChannelCustom.category,
         models.ChannelCustom.location,
-        models.ChannelCustom.language
+        models.ChannelCustom.language,
+        models.ChannelCustom.user_id,
+        models.ChannelCollection.collection_title
         )\
         .join(
             models.ChannelCollection,
