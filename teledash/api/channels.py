@@ -197,7 +197,7 @@ async def update_number_of_messages_in_chat(
     if tg_client is None:
         tg_client = await telegram.get_authenticated_client(client_id)
         request.app.state.clients[client_id] = tg_client
-    channel_in_db = uc.get_channel_by_url(db, channel.url)
+    channel_in_db = uc.get_channel_by_url(db, channel.url)  # returns dict or None
 
     if not channel_in_db:
         raise HTTPException(
@@ -205,14 +205,14 @@ async def update_number_of_messages_in_chat(
             detail="Channel is not in db. See /api/channel"
         )
     input_entity_info = {
-        "id": channel_in_db.id,
-        "access_hash": int(channel_in_db.access_hash)
+        "id": channel_in_db.get("id"),
+        "access_hash": int(channel_in_db.get("access_hash"))
     }
     msg_count = await count_peer_messages(
         tg_client, input_entity_info
     )
     uc.update_messages_count(
-        db, channel_in_db.url, int(msg_count["msg_count"])
+        db, channel_in_db.get("url"), int(msg_count["msg_count"])
     )
     response = uc.get_channel_by_url(db, channel.url)
     return JSONResponse(content=jsonable_encoder(
@@ -240,15 +240,15 @@ async def update_number_of_participants_in_chat(
             detail="Channel is not in db. See /api/channel"
         )
     input_entity_info = {
-        "id": int(channel_in_db.id),
-        "access_hash": int(channel_in_db.access_hash)
+        "id": int(channel_in_db.get("id")),
+        "access_hash": int(channel_in_db.get("access_hash"))
     }
     info = await get_channel_or_megagroup(
         tg_client, input_entity_info
     )
     pts_count = info["full_chat"]["participants_count"]
     uc.update_channel_common(
-        db, channel_in_db.url, {"participants_count": pts_count}
+        db, channel_in_db.get("url"), {"participants_count": pts_count}
     )
     response = uc.get_channel_by_url(db, channel.url)
     return JSONResponse(content=jsonable_encoder(
@@ -278,8 +278,8 @@ async def update_dynamic_variables_of_a_chat(
             detail="Channel is not in db. See /api/channel"
         )
     input_entity_info = {
-        "id": int(channel_in_db.id),
-        "access_hash": int(channel_in_db.access_hash)
+        "id": int(channel_in_db.get("id")),
+        "access_hash": int(channel_in_db.get("access_hash"))
     }
     chat_info = await get_channel_or_megagroup(
         tg_client, input_entity_info
@@ -290,7 +290,7 @@ async def update_dynamic_variables_of_a_chat(
     pts_count = chat_info["full_chat"]["participants_count"]
     uc.update_channel_common(
         db,
-        channel_in_db.url,
+        channel_in_db.get("url"),
         {
             "messages_count": msg_count["msg_count"],
             "participants_count": pts_count
