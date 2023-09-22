@@ -374,16 +374,21 @@ async def update_chats_periodically(
     while True:
         for url in channel_urls:
             print(f'Updating: {url}')
-            channel = uc.get_channel_by_url(db, url)
+            channel = uc.get_channel_by_url(db, url)  # it should return dict or None
+            print(f'Channel in db: {channel}')
             if channel:  # this function works just on already initiated channels (url in db)
-                channel = channel.to_dict()
                 print(channel)
                 if not channel["id"]:
-                    print(f'{url} has not id and access_hash yet. Retriving entity info from Telegram')
-                    channel = await build_chat_info(client, url)
-                    print('Inserting entity info and metadata in db')
-                    uc.upsert_channel_common(db, models.ChannelCommon(**channel))
-                    print(channel)
+                    print(f'{url} has not id and access_hash yet. Trying to retrieve entity info from Telegram')
+                    try:
+                        channel = await build_chat_info(client, url)
+                        print('Inserting entity info and metadata in db')
+                        uc.upsert_channel_common(db, models.ChannelCommon(**channel))
+                    except Exception as e:
+                        print("Not able to get and save chat info because of error: " + str(e))
+                        print(f'Skipping {url}')
+                        await asyncio.sleep(sleep_for_requests)
+                        continue  # try next channel in list
             if not channel:  # should never happen this
                 continue  
             input_entity_info = {
