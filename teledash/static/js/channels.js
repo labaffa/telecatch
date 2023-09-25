@@ -245,152 +245,127 @@ async function fetchStatus(uid) {
 
 $('#collection-submit').click(function(ev){
   // $('#collection-submit').prop('disabled', true);
-  $(':button').prop('disabled', true);
-  ev.preventDefault();
-  
-  let form = document.getElementById('collection-form');
-  let data = new FormData(form);
-  var collectionTitle = data.get('collection-title');
-  $('#collection-status').text(`Saving collection with title: ${collectionTitle}`);
-  let channels = window.dataTable.rows.map(function(x) {
-    return x.url.trim();
-  });
-
-  let channelcreate_items = window.dataTable.rows.map(function(x){
-    return {"url": x.url.trim()}
-  });
-  let payload = JSON.stringify(
-    {"collection_title": collectionTitle, "channel_urls": channelcreate_items}
-  )
-  
-  let initPayload = JSON.stringify(
-    window.dataTable.rows.map(function(x){
-      return {
-        channel_url: x.url.trim(), 
-        category: x.category, 
-        language: x.language, 
-        location: x.location
-      }
-    })
-  );
-
-  fetch(`/api/init_many_channels_to_db`, {
-    method: "POST",
-    headers: {
-      'Content-Type': 'application/json' 
-    },
-    body: initPayload
-  }).then(
-    (response) => {
-      if (response.ok) {
-        return response.json()
-      }
-      throw new Error('Error inserting channels in db. Collection not saved')
-      }
-  ).then((data) => {
+  try {
+    if (!window.activeClient){
+      throw new Error('No Telegram accounts registered on your account. Go to "Clients" page')
+    }
+    $(':button').prop('disabled', true);
+    ev.preventDefault();
     
-    console.log("channels initiated if not already")
-    console.log(data)
-    fetch(`/api/channel_collection?client_id=${window.activeClient}`,{
+    let form = document.getElementById('collection-form');
+    let data = new FormData(form);
+    var collectionTitle = data.get('collection-title');
+    $('#collection-status').text(`Saving collection with title: ${collectionTitle}`);
+    let channels = window.dataTable.rows.map(function(x) {
+      return x.url.trim();
+    });
+
+    let channelcreate_items = window.dataTable.rows.map(function(x){
+      return {"url": x.url.trim()}
+    });
+    let payload = JSON.stringify(
+      {"collection_title": collectionTitle, "channel_urls": channelcreate_items}
+    )
+    
+    let initPayload = JSON.stringify(
+      window.dataTable.rows.map(function(x){
+        return {
+          channel_url: x.url.trim(), 
+          category: x.category, 
+          language: x.language, 
+          location: x.location
+        }
+      })
+    );
+
+    fetch(`/api/init_many_channels_to_db`, {
       method: "POST",
       headers: {
         'Content-Type': 'application/json' 
       },
-      body: payload
-      }).then(
-        (response) => {
-          if (response.ok) {
-            return response.json();
-          }
-          
-          
-          throw new Error('Collection title already present in user account. Set a different title');
-         }
-      ).then((data) => {
-
-        let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
-        $('#collection-titles').append(el);
-        
-        console.log("saved collection in user account")
-        console.log(data)
-        $('#collection-submit').prop('disabled', false);
-        $(':button').prop('disabled', false);
-        $('#collection').hide();
-        if (!window.activeCollection){
-          setActiveCollection(collectionTitle);
-          window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
-        }else{
-         window.alert(`Channels from file saved in "${collectionTitle}" collection`)
+      body: initPayload
+    }).then(
+      (response) => {
+        if (response.ok) {
+          return response.json()
         }
-        let title = $('#collection-titles').val();
-        let queryString = jQuery.param(
-          {
-            client_id: window.activeClient,
-            collection: title,
-            period: 60*60
-          },
-          traditional=true
-        )
-        fetch(`/api/set_chat_update_task?${queryString}`,
-          {
-            method: "PUT",
-            headers: {
-              'Content-Type': 'application/json' 
+        throw new Error('Error inserting channels in db. Collection not saved')
+        }
+    ).then((data) => {
+      
+      console.log("channels initiated if not already")
+      console.log(data)
+      fetch(`/api/channel_collection?client_id=${window.activeClient}`,{
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json' 
+        },
+        body: payload
+        }).then(
+          (response) => {
+            if (response.ok) {
+              return response.json();
             }
-          }).then((response) => response.json())
-          .then((data) => {
-            console.log("Set job to update all channels")
-            console.log(data)
-          })
-      })
-      .catch((err) => {
+            
+            
+            throw new Error('Collection not added. Possible reasons: client not registered, title already present in your account');
+          }
+        ).then((data) => {
 
-        $('#collection-submit').prop('disabled', false);
-        $(':button').prop('disabled', false);
-        window.alert(err)
-        console.log('Error: ', err);
-      });
-  })
-  .catch((err) => {
+          let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
+          $('#collection-titles').append(el);
+          
+          console.log("saved collection in user account")
+          console.log(data)
+          $('#collection-submit').prop('disabled', false);
+          $(':button').prop('disabled', false);
+          $('#collection').hide();
+          if (!window.activeCollection){
+            setActiveCollection(collectionTitle);
+            window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
+          }else{
+          window.alert(`Channels from file saved in "${collectionTitle}" collection`)
+          }
+          let title = $('#collection-titles').val();
+          let queryString = jQuery.param(
+            {
+              client_id: window.activeClient,
+              collection: title,
+              period: 60*60
+            },
+            traditional=true
+          )
+          fetch(`/api/set_chat_update_task?${queryString}`,
+            {
+              method: "PUT",
+              headers: {
+                'Content-Type': 'application/json' 
+              }
+            }).then((response) => response.json())
+            .then((data) => {
+              console.log("Set job to update all channels")
+              console.log(data)
+            })
+        })
+        .catch((err) => {
+
+          $('#collection-submit').prop('disabled', false);
+          $(':button').prop('disabled', false);
+          window.alert(err)
+          console.log('Error: ', err);
+        });
+    
+    })
+    .catch((err) => {
+      $('#collection-submit').prop('disabled', false);
+      console.log('Error: ', err);
+    });
+  } catch (error) {
+    window.alert(error);
     $('#collection-submit').prop('disabled', false);
-    console.log('Error: ', err);
-  });
-
-  
-
-  
-  // const baseUrl = '/api/channels_collection_background';
-  // const queryString = jQuery.param(
-  //   {
-  //     client_id: window.activeClient,
-  //     collection_title: collectionTitle
-  //   },
-  //   traditional=true
-  //   );
-  // fetch(`${baseUrl}?${queryString}`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json' 
-  //   },
-  //   body: JSON.stringify(channels)
-  //   }).then((response) => response.json())
-  //   .then((data) => {
-  //     if (data.detail){
-  //       window.alert(data.detail)
-  //     }
-  //     console.log(data);
-  //     let taskUid = data.uid;
-  //     $('#collection-status').text(
-  //       `Started process with uid: ${taskUid}`
-  //     );
-  //     intervalId = setInterval(fetchStatus, 2000, taskUid);
-  //   }
-  //   )
-  //   .catch((err) => {
-  //       console.log('Error: ', err);
-  //   })
-
-
+    $(':button').prop('disabled', false);
+    console.log("Error: ", error)
+  }
   });
 
 
