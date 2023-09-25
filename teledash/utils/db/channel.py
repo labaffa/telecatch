@@ -238,10 +238,13 @@ def upsert_channel_custom(
     if channel_in_db:
         # this is due to 'select(ChannelCustom)' in query. TODO: fix this
         channel_in_db = next(v.to_dict() for k, v in channel_in_db.items())
-
         channel.channel_url = channel_in_db["channel_url"]  # to not remove not lowered ones
+        filters = [
+            models.ChannelCustom.channel_url == channel_in_db["channel_url"],
+            models.ChannelCustom.user_id == channel_in_db["user_id"]
+        ]
         db.query(models.ChannelCustom)\
-            .filter_by(channel_url=channel_in_db["channel_url"])\
+            .filter(*filters)\
             .update(dict(channel))
     else:
         channel.channel_url = channel.channel_url.lower()  # new channels will be lower 
