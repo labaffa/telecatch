@@ -121,13 +121,13 @@ class UserUpdate(BaseModel):
 
 
 class ChannelUpload(BaseModel):
-    name: str
     url: str
-    username: str
-    location: str
-    language: str
-    category: str
-    type: Union[str, None] = None
+    location: Union[str, None] = None
+    language: Union[str, None] = None
+    category: Union[str, None] = None
+    # username: Union[str, None] = None
+    # name: Union[str, None] = None
+    # type: Union[str, None] = None
 
 
 class ChannelCommon(BaseModel):
