@@ -18,6 +18,7 @@ from teledash.db.db_setup import get_db
 from teledash.utils.db import user as uu
 from teledash.utils.db import tg_client as ut
 from teledash.db import models as db_models
+import numpy as np
 try:
     from typing import Annotated
 except Exception:
@@ -207,6 +208,7 @@ async def upload_entities(file: fastapi.UploadFile):
     
     if successful_parsing:
         df.columns = df.columns.str.lower()
+        df = df.replace({np.nan: None})
         for row in df.to_dict("records"):
             row = models.ChannelUpload(**row).dict()
             data.append(row)
