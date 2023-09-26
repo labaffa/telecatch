@@ -185,7 +185,7 @@ async def add_phone_to_user(
 
 @api_login_router.post("/uploadfile")
 async def upload_entities(file: fastapi.UploadFile):
-    successful_parsing = False
+    
     content = await file.read()
     error = None
     data = []
@@ -198,15 +198,16 @@ async def upload_entities(file: fastapi.UploadFile):
             encoding="ISO-8859-1"
             
         )
-        successful_parsing = True
+    
     except Exception:
         try:
             df = pd.read_excel(io.BytesIO(content))
-            successful_parsing = True
         except Exception as e:
-            error = str(e)
-    
-    if successful_parsing:
+            raise fastapi.HTTPException(
+                status_code=400, 
+                detail="File could not be parsed. Try to use .xls, .xlsx, .csv, .tsv"
+            )
+    try:
         df.columns = df.columns.str.lower()
         df = df.replace({np.nan: None})
         for row in df.to_dict("records"):
@@ -217,11 +218,11 @@ async def upload_entities(file: fastapi.UploadFile):
             "error": error,
             "rows": data
         }
-    return {
-        "message": "File not parsed", 
-        "error": error,
-        "data": data
-    }
+    except Exception as e:
+        raise fastapi.HTTPException(
+            status_code=400, detail=str(e)
+        )
+    
 
 
 
