@@ -57,7 +57,12 @@ async def info_of_channels_and_groups(
     # # fewsboard one. 
     # channels = [row[0].to_dict() for row in sql_result]
 
-    channels = uc.get_channels_from_list_of_urls(db, channel_urls)
+    # the if-else is used here because uc function gets all the channels  
+    # present in the DB if channel_urls is empty (should I modify this behavior?)
+    if channel_urls:
+        channels = uc.get_channels_from_list_of_urls(db, channel_urls)
+    else:
+        channels = []
     meta = {
         "channel_count": sum(
             1 for c in channels if c["type"] == "channel"),
