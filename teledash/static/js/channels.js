@@ -50,7 +50,12 @@ fileSubmit.onclick = (ev) => {
     fetch('/uploadfile', {
         method: 'POST',
         body: data
-    }).then((response) => response.json())
+    }).then((response) => {
+      if (response.ok) {
+        return response.json()
+      }
+      return response.json().then((data) => {throw new Error(data.detail)})
+      })
     .then((data) => {
       window.dataTable = data;
       console.log(window.dataTable)
@@ -61,6 +66,11 @@ fileSubmit.onclick = (ev) => {
     )
     .catch((err) => {
         console.log('Error: ', err);
+        window.alert(`File could not be parsed. Possible reasons:
+          - not a valid csv, tsv, xlsx, xls
+          - spreadsheet does not contain the columns: url, category, location, language
+          - the required url field is missing for some rows 
+        `)
     })
 
 };
