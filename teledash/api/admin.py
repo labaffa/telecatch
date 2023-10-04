@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+import fastapi
 from tinydb import Query
 from teledash import models
 from teledash import config
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from email_validator import validate_email
 from teledash.utils.admin import set_disabled
 from teledash.db.db_setup import get_db
+import os
 try:
     from typing import Annotated
 except Exception:
@@ -61,5 +63,12 @@ async def disable_account(
     return updated_user
 
 
+@admin_router.get(
+    '/db_sql_file',
+    response_class=fastapi.responses.FileResponse
+)
+async def download_sql_file_of_app_db():
+    db_path = os.path.join(config.SESSIONS_FOLDER, "teledash.db")
+    return fastapi.responses.FileResponse(db_path)
     
     
