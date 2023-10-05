@@ -265,6 +265,9 @@ $('#collection-submit').click(function(ev){
     let form = document.getElementById('collection-form');
     let data = new FormData(form);
     var collectionTitle = data.get('collection-title');
+    if (collectionTitle === ""){
+      throw new Error('Set a Collection title before submitting')
+    }
     $('#collection-status').text(`Saving collection with title: ${collectionTitle}`);
     let channels = window.dataTable.rows.map(function(x) {
       return x.url.trim();
