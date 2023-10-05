@@ -367,7 +367,8 @@ def get_channel_collection_titles_of_user(
     db: Session, user_id: int
 ):
     filters = [
-        models.ChannelCollection.user_id == user_id
+        models.ChannelCollection.user_id == user_id,
+        models.ChannelCollection.collection_title != ""
     ]
     query = select(
         models.ChannelCollection.collection_title

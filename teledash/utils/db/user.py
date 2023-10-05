@@ -50,14 +50,17 @@ def get_all_channel_urls(db: Session, user_id: int):
     
 def get_active_collection(db: Session, user_id: int):
     query = select(models.ActiveCollection.collection_title)\
-        .where(models.ActiveCollection.user_id == user_id)
+        .where(
+            models.ActiveCollection.user_id == user_id,
+            models.ActiveCollection.collection_title != "" # empty collections are not allowed
+        )
     result = db.execute(query)
     return result.scalar_one_or_none()
 
 
 def upsert_active_collection(db: Session, user_id: int, collection_title: str):
     active_collection_in_db = get_active_collection(db, user_id)
-    if active_collection_in_db:
+    if active_collection_in_db is not None:  # get_active_collection returns scalar or None
         db.query(models.ActiveCollection)\
             .filter_by(user_id=user_id)\
             .update({"collection_title": collection_title})
