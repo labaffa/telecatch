@@ -30,7 +30,10 @@ $('#submitButton').on("click", async function() {
       throw new Error('No Telegram accounts registered on your account. Go to "Clients" page')
     }
     if (!window.activeCollection){
-      throw new Error('No channel collection saved on your account. Go to "Collections" page')
+      throw new Error(`No channel collection set. Possible reasons:
+        - you still need to upload and save the first collection
+        - something went wrong when selecting the active collection (empty title, other unknown reasons)
+        Go to the "Collections" page to set a valid active collection`)
     }
     $('#results-table').attr('data-page', 1);
     let search = $('#inpt_search').val();
