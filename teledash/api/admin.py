@@ -70,7 +70,9 @@ async def disable_account(
 async def download_sql_file_of_app_db(
     path_rel_to_session_folder="teledash.db"
 ):
-    db_path = os.path.join(config.SESSIONS_FOLDER, path_rel_to_session_folder)
-    return fastapi.responses.FileResponse(db_path)
     
+    file_path = os.path.join(config.SESSIONS_FOLDER, path_rel_to_session_folder)
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=400, detail=f"File {file_path} does not exist")
+    return fastapi.responses.FileResponse(file_path)
     
