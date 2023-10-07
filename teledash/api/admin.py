@@ -67,8 +67,10 @@ async def disable_account(
     '/db_sql_file',
     response_class=fastapi.responses.FileResponse
 )
-async def download_sql_file_of_app_db():
-    db_path = os.path.join(config.SESSIONS_FOLDER, "teledash.db")
+async def download_sql_file_of_app_db(
+    path_rel_to_session_folder="teledash.db"
+):
+    db_path = os.path.join(config.SESSIONS_FOLDER, path_rel_to_session_folder)
     return fastapi.responses.FileResponse(db_path)
     
     
