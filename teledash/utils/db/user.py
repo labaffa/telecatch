@@ -62,7 +62,10 @@ def upsert_active_collection(db: Session, user_id: int, collection_title: str):
     active_collection_in_db = get_active_collection(db, user_id)
     if active_collection_in_db is not None:  # get_active_collection returns scalar or None
         db.query(models.ActiveCollection)\
-            .filter_by(user_id=user_id)\
+            .filter(
+                models.ActiveCollection.user_id == user_id,
+                models.ActiveCollection.collection_title != ""
+            )\
             .update({"collection_title": collection_title})
     else:
         db.add(models.ActiveCollection(
