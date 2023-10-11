@@ -10,7 +10,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from teledash.utils.telegram import create_client, \
-    create_session_id, get_authenticated_client
+    create_session_id, get_authenticated_client, client_is_logged_and_usable
 import pandas as pd
 import io
 from sqlalchemy.orm import Session
@@ -151,13 +151,19 @@ async def add_phone_to_user(
 
         client_in_db = ut.get_client_meta(db, client_id)
         client_in_db = client_in_db.to_dict() if client_in_db else {}
-        if request.app.state.clients.get(client_id):
+        authenticated = client_in_db.get("authenticated", False)
+        print("get client in db", client_in_db)
+        # authenticated = await client_is_logged_and_usable(client_id, api_id, api_hash)
+        print("authenticated: ", authenticated)
+        client_used_by_app = request.app.state.clients.get(client_id)
+        if client_used_by_app:
             ut.upsert_user_client_relation(
                 db=db, user_id=user.id, client_id=client_id
             )
-            return client_in_db
+            is_usable = await client_is_logged_and_usable(client_used_by_app)
+            if is_usable:
+                return client_in_db
         
-        authenticated = client_in_db.get("authenticated", False)
         client_dict = await create_client(
             phone, api_id, api_hash, code, authenticated,
         )
@@ -223,6 +229,16 @@ async def upload_entities(file: fastapi.UploadFile):
             status_code=400, detail=str(e)
         )
     
+
+@api_login_router.get("/check_client")
+async def check_if_a_client_is_logged_in(
+    request: fastapi.Request, client_id: str, api_id: int, api_hash: str
+):
+    response = False
+    client_instance_in_app = request.app.state.clients.get(client_id)
+    if client_instance_in_app:
+        response = await client_is_logged_and_usable(client_instance_in_app)
+    return response
 
 
 
