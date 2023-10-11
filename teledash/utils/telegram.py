@@ -167,12 +167,42 @@ async def is_client_authenticated(client_instance):
     return response
 
 
+async def started_client(session_path, api_id, api_hash):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        client = TelegramClient(
+            session_path, 
+            api_id, 
+            api_hash, 
+            loop=loop
+        )
+        await client.start()
+        return client
+    except Exception as e:
+        loop.stop()
+        loop.close()
+        print(str(e))
+
+
+async def client_is_logged_and_usable(client_instance):
+    response = False
+    try:
+        await client_instance.connect()
+        if (await client_instance.is_user_authorized()):
+            response = True
+    except Exception as e:
+        print("[client_is_logged_and_usable]: ", str(e))
+    return response
+
+
 async def get_authenticated_client(
     db: Session, client_id: str
 ):
     session_path = Path(config.SESSIONS_FOLDER).joinpath(
         client_id
     )
+    print("[get_authenticated]: ", client_id)
     client_in_db = ut.get_client_meta(db, client_id)
     if not client_in_db:
         raise fastapi.HTTPException(
@@ -194,17 +224,45 @@ async def get_authenticated_client(
             client_in_db["api_hash"], 
             loop=loop
         )
+        is_usable = await client_is_logged_and_usable(client)
+        if is_usable:
+            await client.start()
+
+        # client = await started_client(
+        #     str(session_path), client_in_db["api_id"], client_in_db["api_hash"]
+        # )
+
         """ client_authenticated = await is_client_authenticated(client)
         if not client_authenticated:
             raise fastapi.HTTPException(
                 status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
                 detail="client not authenticated"
             ) """
-        await client.start()
     except Exception as e:
+        # loop.close()
+        # it never enters here because a try except is inside started_client
         raise fastapi.HTTPException(
             status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
         )
     return client
+
+
+# async def client_is_logged_and_usable(client_id: str, api_id: int, api_hash: str):
+#     client_works = False
+#     session_path = Path(config.SESSIONS_FOLDER).joinpath(
+#         client_id
+#     )
+#     try:
+#         client = TelegramClient(
+#             session_path.as_posix(), int(api_id), api_hash
+#         )
+#         await client.connect()
+#         if await client.is_user_authorized():
+#             client_works = True
+#         client.disconnect()
+#     except Exception as e:
+#         print(str(e))
+#     return client_works
+
 
