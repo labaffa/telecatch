@@ -24,6 +24,8 @@ async def page_to_manage_user_clients(
     clients = ut.get_user_clients(db, user_id=user.id)
     active_client_id = uu.get_active_client(db, user.id)
     active_client = next((x for x in clients if x["client_id"] == active_client_id), None)
+    if active_client is None:
+        active_client = {"client_id": None, "phone": None, "authenticated": None}
     data = {
         "request": request,
         "clients": clients,

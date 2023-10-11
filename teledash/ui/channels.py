@@ -29,6 +29,8 @@ async def page_to_manage_user_clients(
     active_client = next(
         (x for x in user_clients_meta if x["client_id"] == active_client_id), None
     )
+    if active_client is None:
+        active_client = {"client_id": None, "phone": None, "authenticated": None}
     data = {
         "request": request,
         "user": user,

@@ -38,6 +38,8 @@ async def home(
     active_client = next((x["client_id"] for x in clients), None)
     active_client_id = uu.get_active_client(db, user.id)
     active_client = next((x for x in user_clients if x["client_id"] == active_client_id), None)
+    if active_client is None:
+        active_client = {"client_id": None, "phone": None, "authenticated": None}
     data = {
         "request": request, 
         "all_channels": config.DEFAULT_CHANNELS,
