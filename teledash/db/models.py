@@ -116,5 +116,13 @@ class CollectionJob(MyBase):
 class ActiveCollection(MyBase):
     __tablename__ = "active_collection"
 
+    # I think the primary key should be just user_id, because just one for user should be there
     user_id = Column(Integer, primary_key=True, autoincrement=False)
     collection_title = Column(Text, primary_key=True)
+
+
+class ActiveClient(MyBase):
+    __tablename__ = "active_client"
+
+    user_id = Column(Integer, primary_key=True, autoincrement=False)
+    client_id = Column(Text)
