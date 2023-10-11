@@ -103,9 +103,10 @@ async def startup_event():
         try:
             idx = client_item["id"]
             client = await get_authenticated_client(db, idx)
-            app.state.clients[idx] = client
+            if client is not None:
+                app.state.clients[idx] = client
         except Exception as e:
-            print(e)
+            print(f"Error getting client for {client_item['phone']}: ", str(e))
             pass
         # APP_DATA["is_logged_in"] = False
         # APP_DATA["phone"] = None
