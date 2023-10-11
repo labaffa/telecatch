@@ -55,11 +55,14 @@ async def read_search_channel(
     offset_channel: int=0, 
     offset_id: int=0,
     db: Session=Depends(get_db),
-    user = Depends(config.settings.MANAGER)
+    user = Depends(config.settings.MANAGER),
+    client_id=None
 ):
     # TODO: the client_id should be replaced by an 'active client' set by user
-    client_ids = ut.get_user_clients(db=db, user_id=int(user.id))
-    client_id = client_ids[0]["client_id"] if client_ids else None
+    if not client_id:
+        client_ids = ut.get_user_clients(db=db, user_id=int(user.id))
+        print("[/search_channels]", client_ids)
+        client_id = client_ids[0]["client_id"] if client_ids else None
     if client_id is None:
         raise HTTPException(
             status_code=400,
@@ -67,7 +70,7 @@ async def read_search_channel(
         )
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
-        tg_client = await telegram.get_authenticated_client(client_id)
+        tg_client = await telegram.get_authenticated_client(db, client_id)
         request.app.state.clients[client_id] = tg_client
     if not channel_urls:
         collection_titles = uc.get_channel_collection_titles_of_user(db, int(user.id))
@@ -82,6 +85,7 @@ async def read_search_channel(
             x["channel_url"] 
             for x in uc.get_channel_collection(db, user.id, title)
         ]
+    print(channel_urls)
     try:
         response = await search_all_channels(
             db=db,
