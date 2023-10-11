@@ -73,7 +73,31 @@ def upsert_active_collection(db: Session, user_id: int, collection_title: str):
         ))
     db.commit()
     db.flush()
-     
+
+
+def get_active_client(db: Session, user_id: int):
+    query = select(
+        models.ActiveClient.client_id)\
+        .where(
+            models.ActiveClient.user_id == user_id
+        )
+    result = db.execute(query)
+    return result.scalar_one_or_none()
+
+
+def upsert_active_client(db: Session, user_id: int, client_id: str):
+    active_client_in_db = get_active_client(db, user_id)
+    if active_client_in_db is not None:
+        db.query(models.ActiveClient)\
+            .filter(models.ActiveClient.user_id == user_id)\
+            .update({"client_id": client_id})
+    else:
+        db.add(models.ActiveClient(
+            user_id=user_id, client_id=client_id
+        ))
+    db.commit()
+    db.flush()
+
 
 
 
