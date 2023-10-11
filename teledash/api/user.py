@@ -56,6 +56,34 @@ async def set_active_collection_of_user(
         )
 
 
+@router.get("/api/active_client_of_user")
+async def get_current_active_client_of_user(
+    user=fastapi.Depends(config.settings.MANAGER),
+    db: Session=fastapi.Depends(get_db)
+):
+    try:
+        return uu.get_active_client(db, user.id)
+    except Exception as e:
+        raise fastapi.HTTPException(
+            status_code=400, detail=str(e)
+        )
+
+
+@router.post("/api/set_active_client_of_user")
+async def set_active_client_of_user(
+    client_id: str,
+    user=fastapi.Depends(config.settings.MANAGER),
+    db: Session=fastapi.Depends(get_db)
+):
+    try:
+        uu.upsert_active_client(db, user.id, client_id)
+        return {"status": "ok"}
+    except Exception as e:
+        raise fastapi.HTTPException(
+            status_code=400, detail=str(e)
+        )
+
+
 @router.put("/api/set_chat_update_task")
 async def set_chat_update_task_for_user_and_active_client(
     request: fastapi.Request,
@@ -66,6 +94,7 @@ async def set_chat_update_task_for_user_and_active_client(
 ):
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
+        print(f"client of {user.username} is None")
         tg_client = await telegram.get_authenticated_client(client_id)
         request.app.state.clients[client_id] = tg_client
     user_task = CHAT_UPDATE_TASKS.get(user.id)
