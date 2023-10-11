@@ -19,17 +19,15 @@ async def home(
     user=Depends(config.settings.MANAGER),
     db: Session = Depends(get_db)
 ):
+    
     user_collections = uc.get_channel_collection_titles_of_user(db, user.id)
+    user_clients = ut.get_user_clients(db, user.id)
     active_collection = uu.get_active_collection(db, user.id)
+    
     if active_collection:
         channels = uc.get_channel_collection(db, user.id, active_collection)
     else:
         channels = []
-    # ch_meta = {
-    #     "channel_count": sum(1 for c in channels if c["type"] == "channel"),
-    #     "group_count": sum(1 for c in channels if c["type"] != "channel"),
-    #     "participant_count": sum(c["participants_count"] for c in channels),
-    # }
     channel_urls = [c["url"] for c in channels]
     user_clients_meta = ut.get_user_clients(db, user.id)
     
@@ -38,13 +36,15 @@ async def home(
         if request.app.state.clients.get(x["client_id"])
     ]
     active_client = next((x["client_id"] for x in clients), None)
+    active_client_id = uu.get_active_client(db, user.id)
+    active_client = next((x for x in user_clients if x["client_id"] == active_client_id), None)
     data = {
         "request": request, 
         "all_channels": config.DEFAULT_CHANNELS,
         # "channels_info": {"meta": ch_meta, "data": channels},
         "user": user,
         "clients": clients,
-        "active_client": active_client,
+        "active_client": dict(active_client),
         "collections": user_collections,
         "active_collection": active_collection,
         "channel_urls": channel_urls

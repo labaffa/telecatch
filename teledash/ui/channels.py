@@ -24,11 +24,15 @@ async def page_to_manage_user_clients(
         x for x in user_clients_meta
         if request.app.state.clients.get(x["client_id"])
     ]
-    active_client = next((x["client_id"] for x in clients), None)
+    # active_client = next((x["client_id"] for x in clients), None)
+    active_client_id = uu.get_active_client(db, user.id)
+    active_client = next(
+        (x for x in user_clients_meta if x["client_id"] == active_client_id), None
+    )
     data = {
         "request": request,
         "user": user,
-        "active_client": active_client,
+        "active_client": dict(active_client),
         "active_collection": active_collection
     }
     return templates.TemplateResponse(

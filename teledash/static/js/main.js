@@ -26,7 +26,7 @@ $("#inpt_search").on('blur', function () {
 
 $('#submitButton').on("click", async function() {
   try {
-    if (!window.activeClient){
+    if (!window.activeClient.client_id){
       throw new Error('No Telegram accounts registered on your account. Go to "Clients" page')
     }
     if (!window.activeCollection){
@@ -64,7 +64,7 @@ $('#submitButton').on("click", async function() {
     if (!window.data_range){
       callAPI(search, window.limit, 0, 0, 
         window.start_date, window.end_date, 
-        window.chat_type, window.country, window.activeClient, window.channelUrls);
+        window.chat_type, window.country, window.activeClient.client_id, window.channelUrls);
     } else {
       await export_search();
     }
@@ -207,7 +207,7 @@ function callAPI(
           window.search, window.limit, 
           offset_channel, offset_id, 
           window.start_date, window.end_date,
-          window.chat_type, window.country, window.activeClient, channelUrls
+          window.chat_type, window.country, window.activeClient.client_id, channelUrls
           );
     }
 
@@ -307,7 +307,7 @@ async function export_search(){
     offset_channel: 0,
     offset_id: 0,
     out_format: window.export_format,
-    client_id: window.activeClient,
+    client_id: window.activeClient.client_id,
     channel_urls: window.channelUrls,
   },
   traditional=true 

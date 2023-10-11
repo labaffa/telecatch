@@ -256,7 +256,7 @@ async function fetchStatus(uid) {
 $('#collection-submit').click(function(ev){
   // $('#collection-submit').prop('disabled', true);
   try {
-    if (!window.activeClient){
+    if (!window.activeClient.client_id){
       throw new Error('No Telegram accounts registered on your account. Go to "Clients" page')
     }
     $(':button').prop('disabled', true);
@@ -308,7 +308,7 @@ $('#collection-submit').click(function(ev){
       
       console.log("channels initiated if not already")
       console.log(data)
-      fetch(`/api/channel_collection?client_id=${window.activeClient}`,{
+      fetch(`/api/channel_collection?client_id=${window.activeClient.client_id}`,{
         method: "POST",
         headers: {
           'Content-Type': 'application/json' 
@@ -342,7 +342,7 @@ $('#collection-submit').click(function(ev){
           let title = $('#collection-titles').val();
           let queryString = jQuery.param(
             {
-              client_id: window.activeClient,
+              client_id: window.activeClient.client_id,
               collection: title,
               period: 60*60
             },
