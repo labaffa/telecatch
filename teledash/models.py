@@ -209,4 +209,9 @@ class CollectionJob(BaseModel):
 class ActiveCollection(BaseModel):
     user_id: int
     collection_title: str
+
+
+class ActiveClient(BaseModel):
+    user_id: int
+    client_id: str
     
