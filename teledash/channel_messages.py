@@ -15,6 +15,7 @@ import asyncio
 from typing import Union
 from teledash.utils.db import channel as uc
 from sqlalchemy.orm import Session
+from teledash.utils import telegram as ut
 
 
 Channel = Query()
@@ -89,10 +90,7 @@ async def search_single_channel_batch(
     offset_id: int=0
 ):
     all_messages = []
-    entity = types.InputPeerChannel(
-        channel_id=int(channel_info["id"]),
-        access_hash=channel_info["access_hash"]
-    )
+    entity = await ut.get_input_entity(client, channel_info)
     async for message in client.iter_messages(
         entity, 
         search=search, 
@@ -145,6 +143,7 @@ async def search_all_channels(
             except Exception as e:
                 print("Not able to get and save chat info because of error: " + str(e))
         try: 
+            print("[search_all_channels]: ", channel_info)
             channel_msg = await search_single_channel_batch(
                 client, 
                 channel_info, 
@@ -198,10 +197,7 @@ async def search_all_channels_generator(
             except Exception as e:
                 print("Not able to get and save chat info because of error: " + str(e))
         try:
-            entity = types.InputPeerChannel(
-                channel_id=int(channel_info["id"]),
-                access_hash=channel_info["access_hash"]
-            )
+            entity = await ut.get_input_entity(client, channel_info)
             async for message in client.iter_messages(
                 entity, 
                 search=search, 
@@ -230,10 +226,7 @@ async def get_channel_or_megagroup(
     except Exception:
         pass
     try:
-        channel = types.InputPeerChannel(
-            channel_id=int(channel["id"]),
-            access_hash=channel["access_hash"]
-        )
+        channel = await ut.get_input_entity(client, channel)
     except Exception:
         pass
 
@@ -245,10 +238,7 @@ async def get_channel_or_megagroup(
 
 
 async def count_peer_messages(client, channel: dict):
-    entity = types.InputPeerChannel(
-        channel_id=int(channel["id"]),
-        access_hash=channel["access_hash"]
-    )
+    entity = await ut.get_input_entity(client, channel)
     cha = await client(functions.messages.GetHistoryRequest(
         peer=entity, 
         limit=1,
@@ -303,10 +293,7 @@ async def join_channel(tg_client, channel: dict):
     keys of a channel
 
     """
-    entity = types.InputPeerChannel(
-        channel_id=int(channel["id"]),
-        access_hash=channel["access_hash"]
-    )
+    entity = await ut.get_input_entity(tg_client, channel)
     await tg_client(
         functions.channels.JoinChannelRequest(entity)
     )
@@ -319,10 +306,7 @@ async def join_channel(tg_client, channel: dict):
 
 
 async def leave_channel(tg_client, channel: dict):
-    entity = types.InputPeerChannel(
-        channel_id=int(channel["id"]),
-        access_hash=channel["access_hash"]
-    )
+    entity = await ut.get_input_entity(tg_client, channel)
     await tg_client(
         functions.channels.LeaveChannelRequest(
             entity
@@ -372,6 +356,11 @@ async def update_chats_periodically(
     db: Session, client, channel_urls, period=TIME_INTERVAL_IN_SEC, sleep_for_requests=3
 ):
     while True:
+        client_is_usable = await ut.client_is_logged_and_usable(client)
+        if not client_is_usable:
+            print(f"[update_chats_periodically]: client is not usable")
+            await asyncio.sleep(period)
+            continue
         for url in channel_urls:
             print(f'Updating: {url}')
             channel = uc.get_channel_by_url(db, url)  # it should return dict or None
@@ -393,7 +382,8 @@ async def update_chats_periodically(
                 continue  
             input_entity_info = {
                 "id": int(channel["id"]),
-                "access_hash": channel["access_hash"]
+                "access_hash": channel["access_hash"],
+                "url": channel["url"]
             }
             count = await count_peer_messages(
                 client, input_entity_info
