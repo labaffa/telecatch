@@ -364,6 +364,9 @@ $('#collection-submit').click(function(ev){
 
           $('#collection-submit').prop('disabled', false);
           $(':button').prop('disabled', false);
+          if ($('#submit-active-collection').find('option').length === 0){
+            $('#submit-active-collection').prop('disabled', true);
+          };
           window.alert(err)
           console.log('Error: ', err);
         });
@@ -371,12 +374,18 @@ $('#collection-submit').click(function(ev){
     })
     .catch((err) => {
       $('#collection-submit').prop('disabled', false);
+      if ($('#submit-active-collection').find('option').length === 0){
+        $('#submit-active-collection').prop('disabled', true);
+      };
       console.log('Error: ', err);
     });
   } catch (error) {
     window.alert(error);
     $('#collection-submit').prop('disabled', false);
     $(':button').prop('disabled', false);
+    if ($('#submit-active-collection').find('option').length === 0){
+      $('#submit-active-collection').prop('disabled', true);
+    };
     console.log("Error: ", error)
   }
   });
@@ -469,13 +478,19 @@ $(window).on('load', function(){
     })
     .then((response) => response.json())
     .then((data) => {
-
+      window.select_coll = data;
+      console.log("data", data)
+      if (data.data.length == 0){
+        $('#submit-active-collection').prop('disabled', true);
+      }
       data.data.forEach((d) => {
         let sel = (d == window.activeCollection) ? 'selected' : '';      
         let el = `<option value=${d} ${sel}>` + d + '</option>';
         $('#collection-titles').append(el);
         
-      });
+      })
+
+      ;
     })
     .catch((err) => {
       console.log('Error: ', err);
