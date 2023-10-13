@@ -96,6 +96,9 @@ async def set_chat_update_task_for_user_and_active_client(
     if tg_client is None:
         print(f"client of {user.username} is None")
         tg_client = await telegram.get_authenticated_client(client_id)
+        if tg_client is None:
+            raise fastapi.HTTPException(
+                status_code=400, detail=f"client {client_id} is no usable")
         request.app.state.clients[client_id] = tg_client
     user_task = CHAT_UPDATE_TASKS.get(user.id)
     if user_task:
