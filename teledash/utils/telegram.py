@@ -5,7 +5,7 @@ https://github.com/digitalmethodsinitiative/4cat/blob/master/datasources/telegra
 """
 from pathlib import Path
 import hashlib
-from telethon import TelegramClient
+from telethon import TelegramClient, types
 from teledash import config
 import asyncio
 from tinydb import Query
@@ -248,6 +248,21 @@ async def get_authenticated_client(
     return client
 
 
+async def get_input_entity(client, channel_info):
+    channel_id = int(channel_info["id"])
+    try:
+        input_entity = await client.get_input_entity(channel_id)
+        print("integer")
+    except Exception:
+        input_entity = await client.get_input_entity(channel_info["url"])
+        print("url")
+    print(input_entity)
+    entity = types.InputPeerChannel(
+        channel_id=channel_id,
+        access_hash=input_entity.access_hash
+    )
+    return entity
+    
 # async def client_is_logged_and_usable(client_id: str, api_id: int, api_hash: str):
 #     client_works = False
 #     session_path = Path(config.SESSIONS_FOLDER).joinpath(
