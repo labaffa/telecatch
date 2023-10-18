@@ -157,13 +157,19 @@ async def add_phone_to_user(
         print("authenticated: ", authenticated)
         client_used_by_app = request.app.state.clients.get(client_id)
         if client_used_by_app:
+            print("[add_tg_phone]: client in app")
             ut.upsert_user_client_relation(
                 db=db, user_id=user.id, client_id=client_id
             )
             is_usable = await client_is_logged_and_usable(client_used_by_app)
+            print("[add_tg_phone] is usable: ", is_usable)
             if is_usable:
                 return client_in_db
-        
+            else:
+                authenticated = False
+        else:
+            authenticated = False
+        print("[add_tg_phone]: creating client")   
         client_dict = await create_client(
             phone, api_id, api_hash, code, authenticated,
         )

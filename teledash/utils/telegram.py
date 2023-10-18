@@ -63,10 +63,12 @@ async def create_client(
     out = None
 
     if authenticated:  # not first login
+
         try:
             client = TelegramClient(
                 str(session_path), int(api_id), api_hash
             )
+        
             await client.start(phone=phone)
             out = {
                 "needs_code": False,
@@ -79,7 +81,7 @@ async def create_client(
             # session is no longer useable, delete file so user will be asked
             # for security code again. The RuntimeError is raised by
             # `cancel_start()`
-            
+            print("[create client]: error on using authenticated client")
             out = {
                 "needs_code": True,
                 "client": None,
@@ -93,6 +95,7 @@ async def create_client(
     else:
         
         try:
+            print("[create client]: first login")
             await first_login(
                 phone, api_id, api_hash, code=code
             )
@@ -146,8 +149,25 @@ async def first_login(phone, api_id, api_hash, code=None):
         except RuntimeError as e:
             # A code was sent to the given phone number
             needs_code = True
-    except Exception:
-        raise  # maybe change this behavior
+    except Exception as e:
+        print("Error: ", str(e))
+        print("[first login]: deleting and creating new session file")
+
+        if session_path.exists():
+            session_path.unlink()
+        
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            client = TelegramClient(str(session_path), api_id, api_hash, loop=loop)
+            await client.start(
+                max_attempts=max_attempts, 
+                phone=phone, 
+                code_callback=code_callback
+            )
+        except RuntimeError as e:
+            # A code was sent to the given phone number
+            needs_code = True
     finally:
         if client and hasattr(client, "disconnect"):
             await client.disconnect()
@@ -225,8 +245,10 @@ async def get_authenticated_client(
             loop=loop
         )
         is_usable = await client_is_logged_and_usable(client)
-        if is_usable:
-            await client.start()
+        print("[get_authenticated]: ", is_usable)
+        if not is_usable:
+            return None
+        await client.start()
 
         # client = await started_client(
         #     str(session_path), client_in_db["api_id"], client_in_db["api_hash"]
@@ -249,16 +271,14 @@ async def get_authenticated_client(
 
 
 async def get_input_entity(client, channel_info):
-    channel_id = int(channel_info["id"])
     try:
+        channel_id = int(channel_info["id"])
         input_entity = await client.get_input_entity(channel_id)
-        print("integer")
     except Exception:
         input_entity = await client.get_input_entity(channel_info["url"])
         print("url")
-    print(input_entity)
     entity = types.InputPeerChannel(
-        channel_id=channel_id,
+        channel_id=input_entity.channel_id,
         access_hash=input_entity.access_hash
     )
     return entity
