@@ -32,11 +32,14 @@ jobs: Dict[UUID, models.Job] = {}
 async def read_get_channel(
     request: Request,
     channel: Union[str, int],
-    client_id: str
+    client_id: str,
+    db: Session = Depends(get_db)
 ):
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
-        tg_client = await telegram.get_authenticated_client(client_id)
+        tg_client = await telegram.get_authenticated_client(db, client_id)
+        if tg_client is None:
+            raise HTTPException(status_code=400, detail="Client is not usable. Register it")
         request.app.state.clients[client_id] = tg_client
     response = await get_channel_or_megagroup(tg_client, channel)
     return JSONResponse(content=jsonable_encoder(
