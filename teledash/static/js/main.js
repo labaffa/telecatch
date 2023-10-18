@@ -312,40 +312,19 @@ async function export_search(){
   },
   traditional=true 
   );
-  // var url = new URL('/api/stream_search', window.location.origin);
-  // url.search = new URLSearchParams(params).toString();
+  var url = new URL('/api/stream_search', window.location.origin);
+  //url.search = new URLSearchParams(params).toString();
+  url.search = queryString;
+  window.open(url, "_blank");
   
-  
-  fetch(`/api/stream_search?${queryString}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
-    }
-  }).then(res => {
-    const disposition = res.headers.get('Content-Disposition');
-    filename = disposition.split(/;(.+)/)[1].split(/=(.+)/)[1];
-    if (filename.toLowerCase().startsWith("utf-8''"))
-        filename = decodeURIComponent(filename.replace("utf-8''", ''));
-    else
-        filename = filename.replace(/['"]/g, '');
-    const fileStream = streamSaver.createWriteStream(filename)
-    // more optimized
-    /* if (window.WritableStream && readableStream.pipeTo) {
-      return readableStream.pipeTo(fileStream)
-        .then(() => console.log('done writing'))
-    } */
-
-    window.writer = fileStream.getWriter()
-
-    const reader = res.body.getReader()
-    const pump = () => reader.read()
-      .then(res => res.done
-        ? writer.close()
-        : writer.write(res.value).then(pump))
-
-    pump()
-  })};
+  // fetch(`/api/stream_search?${queryString}`, {
+  //   headers: {
+  //     'Content-Type': 'application/json',
+  //     'Cache-Control': 'no-cache',
+  //   'Connection': 'keep-alive'
+  //   }
+  // })
+};
 
 
 
@@ -364,37 +343,39 @@ $('#export-messages').click(function(e){
   };
   var url = new URL('/api/stream_search', window.location.origin);
   url.search = new URLSearchParams(params).toString();
-  
+  console.log("prima")
   fetch(url, {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache',
     'Connection': 'keep-alive'
     }
-  }).then(res => {
-    const disposition = res.headers.get('Content-Disposition');
-    filename = disposition.split(/;(.+)/)[1].split(/=(.+)/)[1];
-    if (filename.toLowerCase().startsWith("utf-8''"))
-        filename = decodeURIComponent(filename.replace("utf-8''", ''));
-    else
-        filename = filename.replace(/['"]/g, '');
-    const fileStream = streamSaver.createWriteStream(filename)
-    // more optimized
-    /* if (window.WritableStream && readableStream.pipeTo) {
-      return readableStream.pipeTo(fileStream)
-        .then(() => console.log('done writing'))
-    } */
-
-    window.writer = fileStream.getWriter()
-
-    const reader = res.body.getReader()
-    const pump = () => reader.read()
-      .then(res => res.done
-        ? writer.close()
-        : writer.write(res.value).then(pump))
-
-    pump()
   })
+  console.log("Fatto")
+  // .then(res => {
+  //   const disposition = res.headers.get('Content-Disposition');
+  //   filename = disposition.split(/;(.+)/)[1].split(/=(.+)/)[1];
+  //   if (filename.toLowerCase().startsWith("utf-8''"))
+  //       filename = decodeURIComponent(filename.replace("utf-8''", ''));
+  //   else
+  //       filename = filename.replace(/['"]/g, '');
+  //   const fileStream = streamSaver.createWriteStream(filename)
+  //   // more optimized
+  //   /* if (window.WritableStream && readableStream.pipeTo) {
+  //     return readableStream.pipeTo(fileStream)
+  //       .then(() => console.log('done writing'))
+  //   } */
+
+  //   window.writer = fileStream.getWriter()
+
+  //   const reader = res.body.getReader()
+  //   const pump = () => reader.read()
+  //     .then(res => res.done
+  //       ? writer.close()
+  //       : writer.write(res.value).then(pump))
+
+  //   pump()
+  // })
 });
 
 async function fillChatInfo(eleId, chatType){
