@@ -86,3 +86,8 @@ class Settings(BaseSettings):
 
 settings = Settings()
     
+TELEGRAM_MEDIA_MAP = {
+    "MessageMediaWebPage": "webpage",
+    # "MessageMediaDocument": "document",
+    "MessageMediaPhoto": "photo"
+}
