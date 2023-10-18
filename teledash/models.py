@@ -52,12 +52,16 @@ class Channel(ChannelCreate):
 
 class Message(BaseModel):
     id: int
+    channel_id: int
     username: str
     message: str
     timestamp: str
     type: str
     country: Union[str, None]
     views: Union[StringInt, None]
+    media_type: Union[str, None] = None
+    media_description: Union[str, None] = None
+    media_filename: Union[str, None] = None
     # media: Union[str, None]
 
 
