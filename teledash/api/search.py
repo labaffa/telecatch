@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from teledash.db.db_setup import get_db
 from teledash.utils.db import tg_client as ut
 from teledash.utils.db import channel as uc
+from teledash.utils.db import user as uu
 
 
 search_router = APIRouter()
@@ -58,11 +59,8 @@ async def read_search_channel(
     user = Depends(config.settings.MANAGER),
     client_id=None
 ):
-    # TODO: the client_id should be replaced by an 'active client' set by user
     if not client_id:
-        client_ids = ut.get_user_clients(db=db, user_id=int(user.id))
-        print("[/search_channels]", client_ids)
-        client_id = client_ids[0]["client_id"] if client_ids else None
+        client_id = uu.get_active_client(db, user.id)
     if client_id is None:
         raise HTTPException(
             status_code=400,
@@ -85,7 +83,7 @@ async def read_search_channel(
             x["channel_url"] 
             for x in uc.get_channel_collection(db, user.id, title)
         ]
-    print(channel_urls)
+    
     try:
         response = await search_all_channels(
             db=db,
@@ -124,11 +122,11 @@ async def search_and_export_messages_to_csv(
     offset_id: int=0,
     out_format: Union[str, None]=None,
     db: Session=Depends(get_db),
-    user = Depends(config.settings.MANAGER)
+    user = Depends(config.settings.MANAGER),
+    client_id = None
 ):
-    # TODO: the client_id should be replaced by an 'active client' set by user
-    client_ids = ut.get_user_clients(db=db, user_id=int(user.id))
-    client_id = client_ids[0]["client_id"] if client_ids else None
+    if not client_id:
+        client_id = uu.get_active_client(db, user.id)
     if client_id is None:
         raise HTTPException(
             status_code=400,
@@ -137,7 +135,7 @@ async def search_and_export_messages_to_csv(
     
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
-        tg_client = await telegram.get_authenticated_client(client_id)
+        tg_client = await telegram.get_authenticated_client(db, client_id)
         request.app.state.clients[client_id] = tg_client
     if not channel_urls:
         collection_titles = uc.get_channel_collection_titles_of_user(db, int(user.id))
@@ -198,7 +196,7 @@ async def search_and_export_messages_to_csv(
             yield "]"
     return StreamingResponse(
         content=_encoded_results(),
-        media_type='text/event-stream',
+        media_type='application/octet-stream',
         headers=headers
     )
 
