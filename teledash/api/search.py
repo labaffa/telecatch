@@ -287,7 +287,7 @@ async def search_and_export_messages_and_media_to_zip_file(
             fext = ".csv" if out_format == "csv" else ".json"
             headers = {
                 'Access-Control-Expose-Headers': 'Content-Disposition',
-                'Content-Disposition': f'attachment; filename="export.zip"'
+                'Content-Disposition': f'attachment; filename="export{fext}"'
         }
         results = search_all_channels_generator(
             db=db,
