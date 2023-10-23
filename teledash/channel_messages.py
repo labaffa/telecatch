@@ -109,18 +109,18 @@ async def search_single_channel_batch(
         message_d["peer_id"]["channel_url"] = channel_info["url"]
         message_d["chat_type"] = channel_info["type"]
         message_d["country"] = channel_info.get("country")
-        media_metadata = dict(zip(
-            ["media_type", "media_description", "media_filename"], [None]*3
-        ))
-        if message.media is not None:
-            fname = f'{message_d["peer_id"]["channel_id"]}_{message_d["id"]}'
-            print("[search_single_batch]: downloading media")
-            media_metadata = await parse_message_media(message.media)
-            media_metadata["media_filename"] = fname
-            if media_metadata["media_type"] is not None:
-                await message.download_media(os.path.join(media_folder, fname))
+        # media_metadata = dict(zip(
+        #     ["media_type", "media_description", "media_filename"], [None]*3
+        # ))
+        # if message.media is not None:
+        #     fname = f'{message_d["peer_id"]["channel_id"]}_{message_d["id"]}'
+        #     print("[search_single_batch]: downloading media", )
+        #     media_metadata = await parse_message_media(message.media)
+        #     media_metadata["media_filename"] = fname
+        #     if media_metadata["media_type"] is not None:
+        #         await message.download_media(os.path.join(media_folder, fname))
         record = parse_raw_message(message_d)
-        record.update(**media_metadata)
+        # record.update(**media_metadata)
         all_messages.append(
             record
             )
@@ -130,13 +130,15 @@ async def search_single_channel_batch(
 async def parse_message_media(message_media):
     media_map = config.TELEGRAM_MEDIA_MAP
     media_type = media_map.get(message_media.to_dict()["_"])
+    if media_type == "webpage":
+        if message_media.to_dict()["webpage"].get("type", "") != "photo":
+            media_type = None
     # title = message_media.to_dict().get(media_type, {}).get("title")
     description = message_media.to_dict().get(media_type, {}).get("description")
     return {
         "media_description": description,
         "media_type": media_type
     }
-
 
 
 async def search_all_channels(
@@ -213,7 +215,6 @@ async def search_all_channels_generator(
     if limit < 0:
         limit = None
     all_channels = uc.get_channels_from_list_of_urls(db, channel_urls)
-    media_folder = "/media/gio/Samsung_T5/dummy_data/teledash_sessions/media/africa"
     for channel_info in all_channels[offset_channel:]:
         if (chat_type is not None) and (channel_info["type"] != chat_type):
             continue
@@ -247,11 +248,9 @@ async def search_all_channels_generator(
                 ))
                 if message.media is not None:
                     fname = f'{message_d["peer_id"]["channel_id"]}_{message_d["id"]}'
-                    print("[search_single_batch]: downloading media")
                     media_metadata = await parse_message_media(message.media)
-                    media_metadata["media_filename"] = fname
                     if media_metadata["media_type"] is not None:
-                        await message.download_media(os.path.join(media_folder, fname))
+                        media_metadata["media_filename"] = fname
                 record = parse_raw_message(message_d)
                 record.update(**media_metadata)
                 yield record
@@ -259,7 +258,81 @@ async def search_all_channels_generator(
             print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
             
 
+async def download_all_channels_media(
+    db: Session,
+    client,
+    search, 
+    channel_urls,
+    start_date: dt.datetime=None, 
+    end_date: dt.datetime=None,
+    chat_type: str=None, 
+    country: str=None, 
+    limit: int=100, 
+    offset_channel: int=0, 
+    offset_id: int=0,
+    with_media: bool=True
+):  
+    import io
 
+    if not chat_type:
+        chat_type = None
+    if limit < 0:
+        limit = None
+    all_channels = uc.get_channels_from_list_of_urls(db, channel_urls)
+    for channel_info in all_channels[offset_channel:]:
+        if (chat_type is not None) and (channel_info["type"] != chat_type):
+            continue
+        if not channel_info["id"]:
+            print(f'{channel_info["url"]} has not id and access_hash yet. Retriving entity info from Telegram')
+            try:
+                channel_info = await build_chat_info(client, channel_info["url"])
+                print('Inserting entity info and metadata in db')
+                uc.upsert_channel_common(db, models.ChannelCommon(**channel_info))
+            except Exception as e:
+                print("Not able to get and save chat info because of error: " + str(e))
+        try:
+            entity = await ut.get_input_entity(client, channel_info)
+
+            async for message in client.iter_messages(
+                entity, 
+                search=search, 
+                limit=limit, 
+                offset_id=offset_id,
+                offset_date=end_date
+            ):
+                message_d = message.to_dict()
+                if message_d["_"] != "Message":
+                    continue
+                if start_date and message_d["date"] < start_date.replace(tzinfo=pytz.UTC):
+                    break
+                message_d["peer_id"]["channel_url"] = channel_info["url"]
+                message_d["chat_type"] = channel_info["type"]
+                message_d["country"] = channel_info.get("location")
+                media_metadata = dict(zip(
+                    ["media_type", "media_description", "media_filename"], [None]*3
+                ))
+                if with_media and message.media is not None:
+                    media_metadata = await parse_message_media(message.media)
+                    if media_metadata["media_type"] is not None:
+                        try:
+                            media_buffer = io.BytesIO()
+                            fname = f'{message_d["date"].strftime("%Y-%m")}/{message_d["peer_id"]["channel_id"]}_{message_d["id"]}'
+                            media_metadata["media_filename"] = fname
+                            print(f"[search_single_batch]: downloading {media_metadata['media_type']} media of {channel_info['url']}: {message_d['id']}")
+                            await message.download_media(media_buffer)
+                            yield {
+                                "type": "media", 
+                                "data": media_buffer.getvalue(), 
+                                "filename": media_metadata["media_filename"]
+                            }
+                        except Exception:
+                            media_metadata["media_filename"] = None
+                # record = parse_raw_message(message_d)
+                # record.update(**media_metadata)
+                # yield {"type": "message", "data": record}
+        except Exception as e:
+            print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
+            
 async def get_channel_or_megagroup(
         client, channel: Union[str, dict, int]):
     try:
