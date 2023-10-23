@@ -53,6 +53,7 @@ $('#submitButton').on("click", async function() {
     window.data_range = parseInt(data_range);
     window.limit = window.data_range ? -1 : 40;
     window.export_format = export_format;
+    window.media = export_format == 'zip' ? true : false;
     
     /* let limit = parseInt($('#inpt_limit').val(), 10) || 100;
     if (limit > 1000){
@@ -309,10 +310,11 @@ async function export_search(){
     out_format: window.export_format,
     client_id: window.activeClient.client_id,
     channel_urls: window.channelUrls,
+    media: window.media
   },
   traditional=true 
   );
-  var url = new URL('/api/stream_search', window.location.origin);
+  var url = new URL('/api/stream_search_with_media', window.location.origin);
   //url.search = new URLSearchParams(params).toString();
   url.search = queryString;
   window.open(url, "_blank");
