@@ -267,17 +267,25 @@ async def search_and_export_messages_and_media_to_zip_file(
             offset_id=offset_id,
             with_media=True
         )
-    
-        zip_buffer = io.BytesIO()
+        async def _encoded_results():
+            zip_buffer = io.BytesIO()
+            seek_pos = 0
+            with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED) as z:
+                async for item in results:
+                    if item["type"] == "media":
+                        with z.open(f'media/{item["filename"]}', mode='w') as mediafile:
+                            mediafile.write(item["data"])
+                
+                        zip_buffer.seek(seek_pos)
+                        buffer_chunk = zip_buffer.read()
+                        seek_pos = zip_buffer.tell()
+                        yield buffer_chunk
+            zip_buffer.seek(seek_pos)
+            yield zip_buffer.read()
 
-        with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED) as z:
-            async for item in results:
-                if item["type"] == "media":
-                    with z.open(f'media/{item["filename"]}', mode='w') as mediafile:
-                        mediafile.write(item["data"])
 
         return StreamingResponse(
-            content=iter([zip_buffer.getvalue()]),
+            content=_encoded_results(),
             media_type="application/x-zip-compressed",
             headers=headers
         )
