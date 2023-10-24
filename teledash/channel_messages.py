@@ -247,10 +247,13 @@ async def search_all_channels_generator(
                     ["media_type", "media_description", "media_filename"], [None]*3
                 ))
                 if message.media is not None:
-                    fname = f'{message_d["peer_id"]["channel_id"]}_{message_d["id"]}'
-                    media_metadata = await parse_message_media(message.media)
-                    if media_metadata["media_type"] is not None:
-                        media_metadata["media_filename"] = fname
+                    try:
+                        media_metadata = await parse_message_media(message.media)
+                        if media_metadata["media_type"] is not None:
+                            fname = f'{message_d["date"].strftime("%Y-%m")}/{message_d["peer_id"]["channel_id"]}_{message_d["id"]}'
+                            media_metadata["media_filename"] = fname
+                    except Exception:
+                        media_metadata["media_filename"] = None
                 record = parse_raw_message(message_d)
                 record.update(**media_metadata)
                 yield record
