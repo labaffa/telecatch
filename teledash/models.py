@@ -58,6 +58,8 @@ class Message(BaseModel):
     timestamp: str
     type: str
     country: Union[str, None]
+    language: Union[str, None]
+    category: Union[str, None]
     views: Union[StringInt, None]
     media_type: Union[str, None] = None
     media_description: Union[str, None] = None
@@ -166,6 +168,12 @@ class ChannelCustom(ChannelCustomCreate):
     class Config:
         orm_mode = True
         allow_population_by_field_name = True
+
+
+class ChannelInfo(ChannelCommon):
+    language: Optional[str]
+    location: Optional[str]
+    category: Optional[str]
 
 
 class ChannelTag(BaseModel):
