@@ -45,9 +45,18 @@ def get_channel_by_url(
 
 def get_channels_from_list_of_urls(
     db: Session,
-    urls: Iterable[str]
+    urls: Iterable[str],
+    user_id: int
 ):
-    filters = []
+    """
+    At first, this function (and the api/channels_info endpoint) was 
+    planned to retrieve just ChannelCommon, but now it takes both Common and
+    Custom (so it needs user_id)
+
+    So now there is no endpoint and function to get a channel without being
+    logged in
+    """
+    filters = [models.ChannelCustom.user_id == user_id]
     if urls:
         # we search case insensitively
         urls = [x.lower() for x in urls]  
@@ -62,14 +71,16 @@ def get_channels_from_list_of_urls(
         models.ChannelCommon.participants_count,
         models.ChannelCommon.messages_count,
         models.ChannelCommon.inserted_at,
-        models.ChannelCommon.updated_at
-        # models.ChannelCustom.location
+        models.ChannelCommon.updated_at,
+        models.ChannelCustom.location,
+        models.ChannelCustom.category,
+        models.ChannelCustom.language
+        )\
+        .join(
+            models.ChannelCustom,
+            models.ChannelCommon.url == models.ChannelCustom.channel_url
         )\
         .where(*filters)
-        # .join(
-        #     models.ChannelCustom,
-        #     models.ChannelCommon.id == models.ChannelCustom.channel_id
-        # )\
     result = db.execute(query)
     return result.mappings().all()
 
