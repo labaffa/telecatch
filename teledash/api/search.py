@@ -96,7 +96,8 @@ async def read_search_channel(
             country=country,
             limit=limit,
             offset_channel=offset_channel,
-            offset_id=offset_id
+            offset_id=offset_id,
+            user_id=user.id
         )
         return JSONResponse(content=jsonable_encoder(
             response, custom_encoder={
@@ -151,8 +152,8 @@ async def search_and_export_messages_to_csv(
             for x in uc.get_channel_collection(db, user.id, title)
         ]
     headers = {}
-    if (out_format == "csv") or (out_format == "json"):
-        fext = ".csv" if out_format == "csv" else ".json"
+    if (out_format == "tsv") or (out_format == "json"):
+        fext = ".tsv" if out_format == "tsv" else ".json"
         headers = {
             'Access-Control-Expose-Headers': 'Content-Disposition',
             'Content-Disposition': f'attachment; filename="export{fext}"'
@@ -168,14 +169,15 @@ async def search_and_export_messages_to_csv(
             country=country,
             limit=limit,
             offset_channel=offset_channel,
-            offset_id=offset_id
+            offset_id=offset_id,
+            user_id=user.id
         )
     
     async def _encoded_results():
         fieldnames = models.Message.__fields__.keys()
         stream = io.StringIO()
-        writer = csv.DictWriter(stream, fieldnames=fieldnames)
-        if out_format == "csv":
+        writer = csv.DictWriter(stream, fieldnames=fieldnames, delimiter="\t")
+        if out_format == "tsv":
             writer.writeheader()
             yield stream.getvalue()
             async for item in results:
@@ -265,7 +267,8 @@ async def search_and_export_messages_and_media_to_zip_file(
             limit=limit,
             offset_channel=offset_channel,
             offset_id=offset_id,
-            with_media=True
+            with_media=True,
+            user_id=user.id
         )
         async def _encoded_results():
             zip_buffer = io.BytesIO()
@@ -291,8 +294,8 @@ async def search_and_export_messages_and_media_to_zip_file(
         )
     else:
         headers = {}
-        if (out_format == "csv") or (out_format == "json"):
-            fext = ".csv" if out_format == "csv" else ".json"
+        if (out_format == "tsv") or (out_format == "json"):
+            fext = ".tsv" if out_format == "tsv" else ".json"
             headers = {
                 'Access-Control-Expose-Headers': 'Content-Disposition',
                 'Content-Disposition': f'attachment; filename="export{fext}"'
@@ -308,14 +311,15 @@ async def search_and_export_messages_and_media_to_zip_file(
             country=country,
             limit=limit,
             offset_channel=offset_channel,
-            offset_id=offset_id
+            offset_id=offset_id,
+            user_id=user.id
         )
     
         async def _encoded_results():
             fieldnames = models.Message.__fields__.keys()
             stream = io.StringIO()
-            writer = csv.DictWriter(stream, fieldnames=fieldnames)
-            if out_format == "csv":
+            writer = csv.DictWriter(stream, fieldnames=fieldnames, delimiter="\t")
+            if out_format == "tsv":
                 writer.writeheader()
                 yield stream.getvalue()
                 async for item in results:
@@ -340,34 +344,3 @@ async def search_and_export_messages_and_media_to_zip_file(
             media_type='application/octet-stream',
             headers=headers
         )
-
-
-@search_router.post("/api/export_to_csv")
-async def get_csv(
-    messages: List[models.Message]
-    ):
-    import os
-    
-    rows = [dict(m) for m in messages]
-    stream = io.StringIO()
-    in_path = "./test_csv"
-    df = pd.DataFrame(
-        columns=models.Message.__fields__.keys())
-    if rows:
-        df = pd.DataFrame(rows)
-        df.to_csv(in_path, index=False)
-    out_path = os.getcwd() + "/export.csv"
-    headers = {'Access-Control-Expose-Headers': 'Content-Disposition'}
-    # response.headers["Content-Disposition"] = f"attachment; filename={out_path}"
-    """ response = StreamingResponse(
-        iter([stream.getvalue()]), media_type="text/csv"
-    )
-    response.headers["Content-Disposition"] = f"attachment; filename={out_path}" """
-    
-    df.to_csv(out_path, index=False)
-    return FileResponse(
-        path=out_path, 
-        media_type="application/octet-stream", 
-        filename="export.csv",
-        headers=headers
-    )
