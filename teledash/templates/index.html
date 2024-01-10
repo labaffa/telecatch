@@ -5,9 +5,14 @@
     <head>
         <title>TeleDash</title> <!-- may want to replace with jinja variable pulled through? -->
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" integrity="sha512-b2QcS5SsA8tZodcDtGRELiGv5SaKSk1vDHDaQRda0htPYWZ6046lr3kJ5bAAQdpV2mmA/4v0wQF9MyU6/pDIAg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-multiselect/1.1.2/css/bootstrap-multiselect.min.css" integrity="sha512-fZNmykQ6RlCyzGl9he+ScLrlU0LWeaR6MO/Kq9lelfXOw54O63gizFMSD5fVgZvU1YfDIc6mxom5n60qJ1nCrQ==" crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
         <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
         <link rel="stylesheet/less" type="text/css" href="{{ url_for('static', path='/css/style.less') }}">
         <link rel="stylesheet/less" type="text/css" href="{{ url_for('static', path='/css/navbar.css') }}">
+        <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.min.css" integrity="sha512-3lMc9rpZbcRPiC3OeFM3Xey51i0p5ty5V8jkdlNGZLttjj6tleviLJfHli6p8EpXZkCklkqNt8ddSroB3bvhrQ==" crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
+        <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-multiselect-widget/1.1/jquery.multiselect.css" integrity="sha512-oNFtgJA/TXz97awn/d0lmqmqeZOrogkFRAl0FkRu+dReijLbehYCZ/qsfndzeekIqsKoAL2lvynU958Ezntggg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/virtual-select-plugin@1.0.40/dist/virtual-select.min.css">
         <script src="https://cdn.jsdelivr.net/npm/less" ></script>
         <!-- Specify body min-height to fill the page if not full already -->
         <style>
@@ -63,7 +68,7 @@
                             <div class="cntr-ele">
                                 <label for="export-format">Export format:</label>
                                 <select name="export-format" id="export-format">
-                                    <option value="csv">CSV</option>
+                                    <option value="tsv">TSV</option>
                                     <option value="json">JSON</option>
                                     <option value="zip">ZIP (download media)</option>
                                 </select>
@@ -98,10 +103,13 @@
             <div class="monitor d-flex" >
                 <div class="flex-column">
                     <div class="info-badge">
-                        <select name="channels" id="channels"></select>
+                        <div id="channels"></div>
+                        <!-- <select name="channels" id="channels" multiple="multiple">
+                        </select> -->
                     </div>
                     <div class="info-badge">
-                        <select name="groups" id="groups"></select>
+                        <div id="groups"></div>
+                        <!-- <select name="groups" id="groups" multiple="multiple"></select> -->
                     </div>
                     <div class="info-badge">
                         <select name="counts" id="counts"></select>
@@ -165,9 +173,25 @@
         </script>
         <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
+        <script src="https://cdn.jsdelivr.net/npm/virtual-select-plugin@1.0.40/dist/virtual-select.min.js"></script>
+        <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.min.js" integrity="sha512-WW8/jxkELe2CAiE4LvQfwm1rajOS8PHasCCx+knHG0gBHt8EXxS6T6tJRTGuDQVnluuAvMxWF4j8SNFDKceLFg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+ 
+        <!-- Include the plugin's CSS and JS: -->
+        <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-multiselect/1.1.2/js/bootstrap-multiselect.min.js" integrity="sha512-lxQ4VnKKW7foGFV6L9zlSe+6QppP9B2t+tMMaV4s4iqAv4iHIyXED7O+fke1VeLNaRdoVkVt8Hw/jmZ+XocsXQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+        <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js" integrity="sha512-vSyPWqWsSHFHLnMSwxfmicOgfp0JuENoLwzbR+Hf5diwdYTJraf/m+EKrMb4ulTYmb/Ra75YmckeTQ4sHzg2hg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
         
+        
+        <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-multiselect-widget/1.1/jquery.multiselect.min.js" integrity="sha512-nId9V8RhR+CGnQkOPdkZ+IbeYLVHsRGh0vqNxp/Np52HmdLehB/++UBj+oyAs/6IeviN8K5ZY9n7ayiUgmxO0Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-        <script src="{{url_for('static', path='/js/main.js').include_query_params(version='5') }}"></script>
+        <script src="{{ url_for('static', path='/js/main.js').include_query_params(version='5') }}"></script>
+        <!-- <script>
+            $(document).ready(function() {
+                
+                $('#groups').multiselect();
+        
+            });
+        </script> -->
     </body>
     
 </html>

@@ -62,10 +62,14 @@ $('#submitButton').on("click", async function() {
     // Chiamata all'API con il valore dell'input
     window.tableMessages = [];
     
+    let selectedUrls = $('#channels').val();
+    window.urlsToSearch = selectedUrls.length == 0 ? window.channelUrls : selectedUrls
     if (!window.data_range){
       callAPI(search, window.limit, 0, 0, 
         window.start_date, window.end_date, 
-        window.chat_type, window.country, window.activeClient.client_id, window.channelUrls);
+        window.chat_type, window.country, window.activeClient.client_id, 
+        window.urlsToSearch
+        );
     } else {
       await export_search();
     }
@@ -208,7 +212,8 @@ function callAPI(
           window.search, window.limit, 
           offset_channel, offset_id, 
           window.start_date, window.end_date,
-          window.chat_type, window.country, window.activeClient.client_id, channelUrls
+          window.chat_type, window.country, window.activeClient.client_id, 
+          window.urlsToSearch
           );
     }
 
@@ -309,7 +314,7 @@ async function export_search(){
     offset_id: 0,
     out_format: window.export_format,
     client_id: window.activeClient.client_id,
-    channel_urls: window.channelUrls,
+    channel_urls: window.urlsToSearch,
     media: window.media
   },
   traditional=true 
@@ -405,6 +410,9 @@ async function fillChatInfo(eleId, chatType){
   
 };
 
+
+
+
 async function fillMsgCounts(eleId){
   let select = $(eleId);
   select.empty();
@@ -447,6 +455,75 @@ async function fillPtsCounts(eleId){
     });
 };
 
+
+function initChatSelect(eleId, chatType, placeHolder){
+  window.selectedChannelList = [];
+  let channels = window.channelsInfo.data;
+  let options = channels
+    .filter(channel => channel.type === chatType)
+    .map((channel) => {
+    return {"label": channel.title, "value": channel.url}
+  })
+  placeHolder = `-- ${placeHolder} [${options.length}] --`
+  VirtualSelect.init({
+    ele: eleId,
+    options: options,
+    multiple: true,
+    search: false,
+    disableSelectAll: true,
+    showSelectedOptionsFirst: true,
+    placeholder: placeHolder
+  }
+  )
+}
+
+
+function initChatGroupsSelect(eleId){
+  window.selectedChannelList = [];
+  let channels = window.channelsInfo.data;
+  let channelOptions = channels
+    .filter(channel => channel.type === 'channel')
+    .map((channel) => {
+    return {"label": channel.title, "value": channel.url}
+  })
+  let groupOptions = channels
+    .filter(channel => channel.type === 'group')
+    .map((channel) => {
+    return {"label": channel.title, "value": channel.url}
+  })
+  let undefinedOptions = channels
+    .filter(channel => channel.type === 'undefined')
+    .map((channel) => {
+    return {"label": channel.url, "value": channel.url}
+  })
+
+  // placeHolder = `-- ${placeHolder} [${options.length}] --`
+  VirtualSelect.init({
+    ele: eleId,
+    options: [
+      {
+        label: 'Channels',
+        options: channelOptions
+      },
+      {
+        label: 'Groups',
+        options: groupOptions
+      },
+      {
+        label: 'Chat type undefined',
+        options: undefinedOptions
+      }
+    ],
+    multiple: true,
+    search: false,
+    disableSelectAll: true,
+    showSelectedOptionsFirst: true,
+    placeholder: 'Chats in collection'
+  }
+  )
+}
+
+
 async function updateMonitor(){
   let queryString = jQuery.param(
     {channel_urls: window.channelUrls},
@@ -459,8 +536,13 @@ async function updateMonitor(){
       ).then(response => response.json()
       ).then(data => {
         window.channelsInfo = data;
-        fillChatInfo('#channels', 'channel');
-        fillChatInfo('#groups', 'group');
+        // fillChatInfo('#channels', 'channel');
+        // fillChatInfo('#groups', 'group');
+        // initChatSelect('#channels', 'channel', 'Channels');
+        // initChatSelect('#groups', 'group', 'Groups')
+        if (!$('#channels').prop('options')){
+          initChatGroupsSelect('#channels')
+        }
         fillMsgCounts('#counts');
         fillPtsCounts('#participants');
   })
@@ -663,6 +745,7 @@ $(document).ready(function() {
   // showRows(1, tableSelector, rowsPerPage);
   createEmptyTable(rowsPerPage);
   updateMonitor();
+  
   window.setInterval(updateMonitor, 60*60*1000);
   
 });
