@@ -51,7 +51,8 @@ async def read_get_channel(
 async def info_of_channels_and_groups(
     db: Session = Depends(get_db),
     is_joined: Union[bool, None]=None,
-    channel_urls: List[str]=Query(default=[])
+    channel_urls: List[str]=Query(default=[]),
+    user = Depends(config.settings.MANAGER)
 ):
     # sql_result = uc.get_channel_by_url(db=db, is_joined=is_joined)
     
@@ -63,7 +64,7 @@ async def info_of_channels_and_groups(
     # the if-else is used here because uc function gets all the channels  
     # present in the DB if channel_urls is empty (should I modify this behavior?)
     if channel_urls:
-        channels = uc.get_channels_from_list_of_urls(db, channel_urls)
+        channels = uc.get_channels_from_list_of_urls(db, channel_urls, user.id)
     else:
         channels = []
     meta = {
@@ -78,7 +79,7 @@ async def info_of_channels_and_groups(
             int(c["messages_count"]) 
             for c in channels if c["messages_count"])
     }
-    data = [schemas.ChannelCommon(**c) for c in channels]
+    data = [schemas.ChannelInfo(**c) for c in channels]
     return {"meta": meta, "data": data}
 
 
