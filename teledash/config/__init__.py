@@ -7,6 +7,7 @@ from telethon.errors import SessionPasswordNeededError
 from pydantic import BaseSettings
 from decouple import config
 from fastapi_login import LoginManager
+from enum import Enum
 
 
 load_dotenv()
@@ -91,3 +92,9 @@ TELEGRAM_MEDIA_MAP = {
     # "MessageMediaDocument": "document",
     "MessageMediaPhoto": "photo"
 }
+
+
+class EntityType(Enum):
+    user = 1
+    channel = 2
+    chat = 3
