@@ -6,6 +6,8 @@ from teledash.utils.db import tg_client as ut
 from sqlalchemy.orm import Session
 from teledash.db.db_setup import get_db
 from teledash.utils.db import user as uu
+from teledash.utils.db import channel as uc
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="teledash/templates")
@@ -18,12 +20,11 @@ async def page_to_manage_user_clients(
     user=Depends(config.settings.MANAGER),
     db: Session = Depends(get_db)
 ):
+    user_collections = uc.get_channel_collection_titles_of_user(db, user.id)
     active_collection = uu.get_active_collection(db, user.id)
+    if active_collection not in user_collections:  # if collection deleted
+        active_collection = None
     user_clients_meta = ut.get_user_clients(db, user.id)
-    clients = [
-        x for x in user_clients_meta
-        if request.app.state.clients.get(x["client_id"])
-    ]
     # active_client = next((x["client_id"] for x in clients), None)
     active_client_id = uu.get_active_client(db, user.id)
     active_client = next(
