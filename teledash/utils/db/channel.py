@@ -432,3 +432,20 @@ def get_collection_jobs_of_user(db: Session, user_id: int, status="in_progress")
         .where(*filters)
     result = db.execute(query)
     return result.mappings().all()
+
+
+def delete_collection_for_user(
+    db: Session, 
+    collection_title: str,
+    user_id: int,
+):
+    filters = [
+        models.ChannelCollection.collection_title == collection_title,
+        models.ChannelCollection.user_id == user_id
+    ]
+    query = delete(
+        models.ChannelCollection
+        )\
+        .where(*filters)
+    db.execute(query)
+    db.commit()
