@@ -64,7 +64,18 @@ class Message(BaseModel):
     media_type: Union[str, None] = None
     media_description: Union[str, None] = None
     media_filename: Union[str, None] = None
-    # media: Union[str, None]
+    author_type: Optional[int]
+    author_id: Optional[int]
+    author_username: Optional[str]
+    author_name: Optional[str]
+    reply_to_author_type: Optional[int]
+    reply_to_author_id: Optional[int]
+    reply_to_author_username: Optional[str]
+    reply_to_author_name: Optional[str]
+    fwd_from_author_type: Optional[int]
+    fwd_from_author_id: Optional[int]
+    fwd_from_author_username: Optional[str]
+    fwd_from_author_name: Optional[str]
 
 
 # login
@@ -227,10 +238,12 @@ class ActiveClient(BaseModel):
     user_id: int
     client_id: str
     
+
 class Entity(BaseModel):
     id: int
     entity_type: int
     username: Optional[str]
     name: Optional[str]
     phone: Optional[int]
+
 
