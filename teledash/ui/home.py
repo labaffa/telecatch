@@ -23,11 +23,13 @@ async def home(
     user_collections = uc.get_channel_collection_titles_of_user(db, user.id)
     user_clients = ut.get_user_clients(db, user.id)
     active_collection = uu.get_active_collection(db, user.id)
-    
+    if active_collection not in user_collections:  # if collection deleted
+        active_collection = None 
     if active_collection:
         channels = uc.get_channel_collection(db, user.id, active_collection)
     else:
         channels = []
+    
     channel_urls = [c["url"] for c in channels]
     user_clients_meta = ut.get_user_clients(db, user.id)
     
