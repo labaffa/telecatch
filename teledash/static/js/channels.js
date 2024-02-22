@@ -414,6 +414,7 @@ async function showActiveCollection(){
   })
   .then((response) => response.json())
   .then(data => {
+    window.activeCollection = data;
     $('#active-collection').html(data);
     $('#nav-active-collection').html(data);
     }
@@ -430,19 +431,52 @@ async function setActiveCollection(title){
   ).then((response) =>{
     
     showActiveCollection();
-    $('#submit-active-collection').prop('disabled', false);
     
   })
 }
 
+async function deleteCollection(title){
+
+  fetch(`/api/channel_collection?collection_title=${title}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  ).then((response) =>{
+    console.log("deleted", title)
+  })
+}
 
 $('#submit-active-collection').click(function(){
-  $('#submit-active-collection').prop('disabled', true);
+  $('[collection-button]').prop('disabled', true);
   let  title = $('#collection-titles').val();
-  setActiveCollection(title)
+  setActiveCollection(title);
+  $('[collection-button]').prop('disabled', false);    
 });
 
-$('#collection-titles').change(function(){
+$('#delete-collection').click(function(){
+  let title = $('#collection-titles').val();
+  if (!title){
+    window.alert("There is no collection to delete");
+    return;
+  }
+  let text = "Press Ok to confirm that you want to delete it";
+  if (confirm(text) == true){
+    $('[collection-button]').prop('disabled', true);
+    deleteCollection(title);
+    $('#collection-titles').find(`option[value=${title}]`).remove();
+    if (window.activeCollection == title) {
+      window.activeCollection = null;
+      $('#active-collection').html("None");
+      $('#nav-active-collection').html(null);
+    };
+    $('[collection-button]').prop('disabled', false);
+  }
+});
+
+$('#collection-titles').on('click change', function(){
   let title = $('#collection-titles').find(":selected").val();
   console.log(title)
   showCollectionInTable(title);
@@ -450,16 +484,19 @@ $('#collection-titles').change(function(){
 
 
 async function showCollectionInTable(collectionTitle){
+  console.log(collectionTitle)
   fetch(`/api/channel_collection_by_title?collection_title=${collectionTitle}`, {
     headers: {
     'Content-Type': 'application/json' 
     }}
   ).then((response) => response.json())
     .then((data) => {
+      console.log(data)
       let cleanData = data.data.map((o) => {
         let { channel_url, ...clean } = o;
         return clean;
       })
+      console.log(cleanData, collectionTitle)
       showChannels(cleanData, collectionTitle);
     })
     .catch((err) => {
@@ -489,23 +526,79 @@ $(window).on('load', function(){
         $('#collection-titles').append(el);
         
       })
+      try{
+        let title = window.activeCollection ? window.activeCollection : $('#collection-titles').val();
+        showCollectionInTable(title);
+      } catch(error) {
+        console.log(error)
+      }
+      if (window.activeCollection){
+        showActiveCollection();
+      }
 
       ;
     })
     .catch((err) => {
       console.log('Error: ', err);
     });
-    try{
-      showCollectionInTable(window.activeCollection);
-    } catch(error) {
-      console.log(error)
-    }
-    if (window.activeCollection){
-      showActiveCollection();
-    }
 
     
 });
+
+
+function exportTableToTSV() {
+  // Ottieni il riferimento alla tabella
+  var tabella = document.getElementById("results-table");
+
+  // Inizializza una stringa per i dati TSV
+  var tsvData = [];
+
+  // Loop attraverso le righe della tabella
+  var righe = tabella.rows;
+  for (var i = 0; i < righe.length; i++) {
+    var riga = righe[i];
+    var datiRiga = [];
+
+    // Loop attraverso le celle della riga
+    var celle = riga.cells;
+    for (var j = 0; j < celle.length; j++) {
+      var cella = celle[j];
+      datiRiga.push(cella.textContent);
+    }
+
+    // Unisci i dati della riga con un separatore di tabulazione
+    tsvData.push(datiRiga.join("\t"));
+  }
+
+  // Unisci tutte le righe TSV in una stringa completa
+  var tsvContent = tsvData.join("\n");
+
+  // Crea un oggetto Blob per il contenuto TSV
+  var blob = new Blob([tsvContent], { type: "text/tab-separated-values" });
+
+  // Crea un URL per il Blob
+  var url = window.URL.createObjectURL(blob);
+
+  // Crea un elemento <a> per il download del file
+  var a = document.createElement("a");
+  a.href = url;
+
+  // create filename
+  let title = $('#collection-titles').val();
+  let fname = "collection_export.tsv"
+  if (title) {
+    fname = `${title}.tsv`  
+  } 
+  
+
+  a.download = fname;
+
+  // Simula un clic sull'elemento <a> per avviare il download
+  a.click();
+
+  // Rilascia l'URL dell'oggetto Blob
+  window.URL.revokeObjectURL(url);
+}
 
 
 

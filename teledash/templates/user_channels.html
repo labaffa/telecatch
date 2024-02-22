@@ -47,7 +47,10 @@
                                 <select name="collection-titles" id="collection-titles">
     
                                 </select>
-                                <button id="submit-active-collection"> Set Active</button>
+                                <button id="submit-active-collection" collection-button> Set Active</button>
+                                <button id="delete-collection" collection-button> Delete</button>
+                                <button onclick="exportTableToTSV()">Export Collection</button>
+                                
                             </div>
                             <div>
                                 Active collection: <br><span id="active-collection"></span>
@@ -98,6 +101,6 @@
         <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
         <script src="https://cdn.datatables.net/1.10.12/js/jquery.dataTables.js"></script>
-        <script src="{{ url_for('static', path='/js/channels.js' ).include_query_params(version='5') }}"></script>
+        <script src="{{ url_for('static', path='/js/channels.js' ).include_query_params(version='6') }}"></script>
     </body>
 </html>
