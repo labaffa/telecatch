@@ -1,9 +1,11 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
+from sqlalchemy import delete
 from teledash.db import models 
 from teledash import models as schemas
 from typing import Union, List, Iterable
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
+from teledash import config
 
 
 def get_channel_by_url(
@@ -449,3 +451,70 @@ def delete_collection_for_user(
         .where(*filters)
     db.execute(query)
     db.commit()
+
+
+def get_entity_from_db(db: Session, entity_id: int, entity_type: int):
+    filters = [
+        models.Entity.id == entity_id,
+        models.Entity.entity_type == entity_type
+    ]
+    query = select(
+        models.Entity.id,
+        models.Entity.entity_type,
+        models.Entity.username,
+        models.Entity.name,
+        models.Entity.phone
+        )\
+        .where(*filters)
+    result = db.execute(query)
+    return result.mappings().all()
+
+
+def get_entities_in_list(
+    db: Session, entities: Iterable[schemas.Entity]
+):
+    if not entities:
+        return []
+    conditions = (
+        and_(
+            models.Entity.id == entity["id"], 
+            models.Entity.entity_type == config.EntityType[entity["entity_type"]].value
+        ) for entity in entities
+    )
+    filters = [or_(*conditions)]
+    query = select(
+        models.Entity.id,
+        models.Entity.entity_type,
+        models.Entity.username,
+        models.Entity.name,
+        models.Entity.phone
+        )\
+        .where(*filters)
+    result = db.execute(query)
+    return result.mappings().all()
+
+
+def insert_entity(
+    db: Session, 
+    entity: schemas.Entity
+):
+    db_entity = models.Entity(**dict(entity))
+    db.add(db_entity)
+    db.commit()
+    db.refresh(db_entity)
+    return db_entity
+
+
+def insert_entities(
+    db: Session,
+    entities: List[schemas.Entity]
+):
+    db_entities = [
+        models.Entity(**dict(entity)) for entity in entities
+    ]
+    
+    db.bulk_save_objects(db_entities)
+    db.commit()
+    return db_entities
+    
+    
