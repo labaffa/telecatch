@@ -32,7 +32,9 @@ $('#submitButton').on("click", async function() {
     if (!window.activeCollection){
       throw new Error(`No channel collection set. Possible reasons:
         - you still need to upload and save the first collection
+        - you deleted the active collection
         - something went wrong when selecting the active collection (empty title, other unknown reasons)
+        
         Go to the "Collections" page to set a valid active collection`)
     }
     $('#results-table').attr('data-page', 1);
