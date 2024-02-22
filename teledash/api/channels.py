@@ -22,6 +22,7 @@ import json
 from teledash import config
 from sqlalchemy import delete
 from teledash.db import models as db_models
+from teledash.utils.db import user as uu
 
 
 channel_router = APIRouter()
@@ -585,6 +586,28 @@ async def add_collection_item_for_user(
     }
 
 
+@channel_router.delete("/api/channel_collection")
+async def delete_collection_item_for_user(
+    collection_title: str,
+    db: Session = Depends(get_db),
+    user = Depends(config.settings.MANAGER)
+):
+    collection_in_db = uc.get_channel_collection(db, user.id, collection_title)
+    if not collection_in_db:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Title '{collection_title}' is not present in your collections")
+    try:
+        uc.delete_collection_for_user(db, collection_title, user.id)
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "status": "ok",
+        "data": collection_in_db
+    }
+
+
 @channel_router.get("/api/channel_collections_of_user")
 async def get_collections_registered_by_an_user(
     db: Session = Depends(get_db),
@@ -643,3 +666,30 @@ async def upsert_many_channels_to_common_and_custom_tables(
         # "data": {"customs": customs, "commons": commons}
     }
 
+
+@channel_router.get("/api/get_entity")
+async def get_entity(
+    request: Request,
+    entity_input: Union[str, int], 
+    db: Session = Depends(get_db),
+    user = Depends(config.settings.MANAGER)
+):
+    try:
+        entity_input = int(entity_input)
+    except Exception:
+        pass
+    try:
+        client_id = uu.get_active_client(db, user.id)
+        tg_client = request.app.state.clients.get(client_id)
+        if tg_client is None:
+            tg_client = await telegram.get_authenticated_client(client_id)
+            request.app.state.clients[client_id] = tg_client
+        entity = await tg_client.get_entity(entity_input)
+        entity = entity.to_dict()
+        entity.pop("photo")  # photo contains bytes and need to be utf8 encoded
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=str(e)
+        )
+    return entity
+    
