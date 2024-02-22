@@ -71,18 +71,18 @@ async def read_search_channel(
         tg_client = await telegram.get_authenticated_client(db, client_id)
         request.app.state.clients[client_id] = tg_client
     if not channel_urls:
-        collection_titles = uc.get_channel_collection_titles_of_user(db, int(user.id))
-        title = collection_titles[0] if collection_titles else None
-        if title is None:
-            raise HTTPException(
+        # collection_titles = uc.get_channel_collection_titles_of_user(db, int(user.id))
+        # title = collection_titles[0] if collection_titles else None
+        # if title is None:
+        raise HTTPException(
             status_code=400,
-            detail=f"Please set channels to search or create a collection"
+            detail=f"Please set channels to search, set or create a collection"
         )
-        # TODO: this should be replaced so that 'search_all_channels' does not query the db
-        channel_urls = [   
-            x["channel_url"] 
-            for x in uc.get_channel_collection(db, user.id, title)
-        ]
+        # # TODO: this should be replaced so that 'search_all_channels' does not query the db
+        # channel_urls = [   
+        #     x["channel_url"] 
+        #     for x in uc.get_channel_collection(db, user.id, title)
+        # ]
     
     try:
         response = await search_all_channels(
