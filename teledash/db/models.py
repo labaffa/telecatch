@@ -126,3 +126,16 @@ class ActiveClient(MyBase):
 
     user_id = Column(Integer, primary_key=True, autoincrement=False)
     client_id = Column(Text)
+
+
+class Entity(MyBase):
+    __tablename__ = "entity"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    entity_type = Column(Integer, primary_key=True, nullable=False)
+    username = Column(Text, nullable=True)
+    name = Column(Text, nullable=True)
+    phone = Column(Integer, nullable=True)
+
+
+

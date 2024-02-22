@@ -227,3 +227,10 @@ class ActiveClient(BaseModel):
     user_id: int
     client_id: str
     
+class Entity(BaseModel):
+    id: int
+    entity_type: int
+    username: Optional[str]
+    name: Optional[str]
+    phone: Optional[int]
+
