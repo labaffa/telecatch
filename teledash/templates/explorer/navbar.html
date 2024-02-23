@@ -11,7 +11,7 @@
             {% else %}
                 Using phone: 
             {% endif %} -->
-            <a href="/clients"> Clients [<span id="nav-active-client">{{active_client.phone}}</span>]</a>
+            <a href="/clients"> Client Phone [<span id="nav-active-client">{{active_client.phone}}</span>]</a>
         </li>
         <li>
             <!-- List of available collections: 
@@ -21,7 +21,7 @@
                 [active]
                 {% endif %}
             {% endfor %} -->
-            <a href="/channels"> Collections [<span id="nav-active-collection">{{active_collection}}</span>]</a>
+            <a href="/channels"> Active Collection [<span id="nav-active-collection">{{active_collection}}</span>]</a>
         </li>
     </ul>
     <ul  class="right">
