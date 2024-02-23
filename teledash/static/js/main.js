@@ -27,7 +27,12 @@ $("#inpt_search").on('blur', function () {
 $('#submitButton').on("click", async function() {
   try {
     if (!window.activeClient.client_id){
-      throw new Error('No Telegram accounts registered on your account. Go to "Clients" page')
+      throw new Error(`There is no active client set. Possibile reasons:
+      - you still need to register an account
+      - a registered and active client has been inactive for a long time 
+      - unknown authentication errors related to the active client occurred
+
+      Go to "Clients" page to register a new account o register an old account again.`)
     }
     if (!window.activeCollection){
       throw new Error(`No channel collection set. Possible reasons:
