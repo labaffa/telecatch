@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 import fastapi
-from tinydb import Query
-from teledash import models
+from teledash import schemas
 from teledash import config
 from teledash.utils.db import user as uu
 from typing import List
@@ -38,7 +37,7 @@ async def get_a_list_of_registered_users(
 @admin_router.put(
     '/disable_account',
     summary="Disable an active account",
-    response_model=models.User
+    response_model=schemas.User
 )
 async def disable_account(
     username_or_email: Annotated[str, "Exact username"]
@@ -52,7 +51,7 @@ async def disable_account(
 @admin_router.put(
     '/enable_account',
     summary="Enable a disactive account",
-    response_model=models.User
+    response_model=schemas.User
 )
 async def disable_account(
     username_or_email: Annotated[str, "Exact username"]
