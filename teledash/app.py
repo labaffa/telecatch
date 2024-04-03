@@ -1,30 +1,33 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.responses import ORJSONResponse
 from fastapi.staticfiles import StaticFiles
-from teledash.channel_messages import load_default_channels_in_db, \
-    update_message_counts, update_participant_counts
-from teledash import config
-from teledash.config import tg_client
-import asyncio
 from tinydb import Query
 from fastapi.middleware.cors import CORSMiddleware
-from teledash.utils.login import auth_exception_handler
-from teledash.api.channels import channel_router
-from teledash.api.login import api_login_router
-from teledash.api.search import search_router
 from teledash.ui.login import ui_login_router
-from teledash.ui.home import home_router
-from teledash.api.admin import admin_router
-from teledash.utils.telegram import get_authenticated_client
-from teledash.ui import clients
+from teledash.api.login import api_login_router
+from teledash.api.channels import channel_router
+# from teledash import config
+# from teledash.utils.login import auth_exception_handler
+from teledash.api.search import search_router
+# from teledash.ui.home import home_router
+# from teledash.api.admin import admin_router
+# from teledash.utils.telegram import get_authenticated_client
+# from teledash.ui import clients
 from teledash.api.user import router as user_router
-from teledash.ui.channels import router as channels_router
-from teledash.db.models import Base
-from teledash.db.db_setup import engine, get_db
-from teledash.utils.db import tg_client as ut
+from teledash.api.collections import collection_router
+from teledash.api.telegram_clients import clients_router
+# from teledash.ui.channels import router as channels_router
+# from teledash.db.models import Base
+# from teledash.db.db_setup import engine, get_db
+# from teledash.utils.db import tg_client as ut
+from teledash.db.db_setup import create_db_and_tables
+from teledash.db.models import User
+from teledash.utils.users import auth_backend, active_user, fastapi_users
+from teledash.schemas import UserCreateFU, UserReadFU, UserUpdateFU
+from collections import defaultdict
 
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(
@@ -91,25 +94,28 @@ async def startup_event():
         )
  """
     app.state.clients = {}
-    db = next(get_db())
-    clients_meta = [
-        x[0].to_dict() for x in ut.get_clients_meta(db)
-    ]
+    app.state.background_tasks = defaultdict(lambda: defaultdict(dict))
+    # db = next(get_db())
+    # clients_meta = [
+    #     x[0].to_dict() for x in ut.get_clients_meta(db)
+    # ]
     
 
-    # TODO: this should be done when an user logs in, instead
-    # of loading all the clients at startup. 
-    for client_item in clients_meta:
-        try:
-            idx = client_item["id"]
-            client = await get_authenticated_client(db, idx)
-            if client is not None:
-                app.state.clients[idx] = client
-        except Exception as e:
-            print(f"Error getting client for {client_item['phone']}: ", str(e))
-            pass
-        # APP_DATA["is_logged_in"] = False
-        # APP_DATA["phone"] = None
+    # # TODO: this should be done when an user logs in, instead
+    # # of loading all the clients at startup. 
+    # for client_item in clients_meta:
+    #     try:
+    #         idx = client_item["id"]
+    #         client = await get_authenticated_client(db, idx)
+    #         if client is not None:
+    #             app.state.clients[idx] = client
+    #     except Exception as e:
+    #         print(f"Error getting client for {client_item['phone']}: ", str(e))
+    #         pass
+    #     # APP_DATA["is_logged_in"] = False
+    #     # APP_DATA["phone"] = None
+    await create_db_and_tables()
+    pass
     
 
 
@@ -118,18 +124,45 @@ async def startup_event():
 #     router, 
 #     prefix=settings.API_V1_STR
 #     )
-app.include_router(ui_login_router)
-app.include_router(channel_router)
-app.include_router(search_router)
-app.include_router(home_router)
-app.include_router(api_login_router)
-app.include_router(admin_router)
-app.include_router(clients.router)
-app.include_router(user_router)
-app.include_router(channels_router)
 
-
-app.add_exception_handler(
-    config.NotAuthenticatedException, auth_exception_handler
+app.include_router(search_router, prefix="/v1", tags=["search"])
+# app.include_router(home_router)
+# app.include_router(admin_router)
+# app.include_router(clients.router)
+# app.include_router(user_router)
+# app.include_router(channels_router)
+# app.include_router(channel_router)
+# app.include_router(api_login_router)
+# app.include_router(ui_login_router)
+app.include_router(collection_router, prefix="/v1/collections", tags=["collections"])
+app.include_router(clients_router, prefix="/v1/clients", tags=["telegram clients"])
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend), 
+    prefix="/v1/auth",
+    tags=["auth"]
+)
+app.include_router(
+    fastapi_users.get_register_router(UserReadFU, UserCreateFU),
+    prefix="/v1/auth",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_reset_password_router(), 
+    prefix="/v1/auth",
+    tags=["auth"]
+)
+app.include_router(
+    fastapi_users.get_verify_router(UserReadFU),
+    prefix="/v1/auth",
+    tags=["auth"]
+)
+app.include_router(
+    fastapi_users.get_users_router(UserReadFU, UserUpdateFU), 
+    prefix="/v1/users",
+    tags=["users"]
 )
 
+
+# app.add_exception_handler(
+#     config.NotAuthenticatedException, auth_exception_handler
+# )
