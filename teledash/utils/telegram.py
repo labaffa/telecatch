@@ -324,19 +324,6 @@ async def get_authenticated_client(
         )
     return client
 
-
-async def get_input_entity(client, channel_info):
-    try:
-        channel_id = int(channel_info["id"])
-        input_entity = await client.get_input_entity(channel_id)
-    except Exception:
-        input_entity = await client.get_input_entity(channel_info["url"])
-        print("url")
-    entity = types.InputPeerChannel(
-        channel_id=input_entity.channel_id,
-        access_hash=input_entity.access_hash
-    )
-    return entity
     
 # async def client_is_logged_and_usable(client_id: str, api_id: int, api_hash: str):
 #     client_works = False
