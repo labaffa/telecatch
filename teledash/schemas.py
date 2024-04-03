@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, EmailStr, Json
+from pydantic import BaseModel, Field, EmailStr, Json, AliasChoices
 from typing import Union, Optional, List, Literal, Any
 from uuid import UUID, uuid4
 from dateutil.parser import parse
 import datetime as dt
+from fastapi_users import schemas as fu_schemas
 
 
 def validate_int(v):
@@ -128,7 +129,7 @@ class UserInDB(User):
     hashed_password: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserUpdate(BaseModel):
@@ -161,24 +162,23 @@ class ChannelCommon(BaseModel):
     updated_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
 
     class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
+        from_attributes = True
+        populate_by_name = True
 
 
 class ChannelCustomCreate(BaseModel):
-    channel_url: str = Field(..., validation_alias="url")
-    language: Optional[str]
-    location: Optional[str]
-    category: Optional[str]
+    channel_url: str = Field(..., validation_alias=AliasChoices("url", "channel_url"))
+    language: str | None = None
+    location: str | None = None
+    category: str | None = None
 
 
 class ChannelCustom(ChannelCustomCreate):
-    user_id: int
+    user_id: int | UUID | str
     
-
     class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
+        from_attributes = True
+        populate_by_name = True
 
 
 class ChannelInfo(ChannelCommon):
@@ -225,8 +225,8 @@ class CollectionJob(BaseModel):
     processed_channels: Json[Any] = '[]'
 
     class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
+        from_attributes = True
+        populate_by_name = True
 
 
 class ActiveCollection(BaseModel):
@@ -245,5 +245,27 @@ class Entity(BaseModel):
     username: Optional[str]
     name: Optional[str]
     phone: Optional[int]
+
+
+
+# fastapi-users
+
+class UserReadFU(fu_schemas.BaseUser):
+    username: str
+
+
+class UserCreateFU(fu_schemas.BaseUserCreate):
+    username: str
+
+
+class UserUpdateFU(fu_schemas.BaseUserUpdate):
+    username: str
+
+
+class EmailSchema(BaseModel):
+    email: List[EmailStr]
+
+
+
 
 
