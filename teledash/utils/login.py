@@ -4,7 +4,7 @@ from jose import JWTError, jwt
 from typing import Union
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from teledash import models
+from teledash import schemas
 from teledash.config import settings
 from teledash import config
 from tinydb import Query
@@ -54,7 +54,7 @@ def get_user(
     except Exception:
         user = uu.get_user_by_username(db, username_or_email)
     if user and not user.to_dict().get("disabled", False):
-        return models.UserInDB(**user.to_dict())
+        return schemas.UserInDB(**user.to_dict())
     
 
 def authenticate_user(
@@ -102,7 +102,7 @@ def create_refresh_token(
 
 async def get_current_user(
     token: Annotated[str, Depends(reuseable_oauth)],
-) -> models.User:
+) -> schemas.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -116,7 +116,7 @@ async def get_current_user(
             algorithms=[settings.ALGORITHM]
         )
         
-        token_data = models.TokenPayload(**payload)
+        token_data = schemas.TokenPayload(**payload)
         if datetime.fromtimestamp(token_data.exp) < datetime.now():
             raise HTTPException(
                 status_code = status.HTTP_401_UNAUTHORIZED,
@@ -132,7 +132,7 @@ async def get_current_user(
 
 
 async def get_current_active_user(
-    current_user: Annotated[models.User, Depends(get_current_user)]
+    current_user: Annotated[schemas.User, Depends(get_current_user)]
 ):
     
     if current_user.disabled:
