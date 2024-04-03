@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
+from sqlalchemy import update, insert
 from teledash.db import models 
-from teledash import models as schemas
+from teledash import schemas as schemas
 
 
 def get_user(db: Session, user_id: int):
@@ -48,55 +49,68 @@ def get_all_channel_urls(db: Session, user_id: int):
     return raw_result.mappings().all()
         
     
-def get_active_collection(db: Session, user_id: int):
+async def get_active_collection(db: Session, user_id: int):
     query = select(models.ActiveCollection.collection_title)\
         .where(
             models.ActiveCollection.user_id == user_id,
             models.ActiveCollection.collection_title != "" # empty collections are not allowed
         )
-    result = db.execute(query)
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 
-def upsert_active_collection(db: Session, user_id: int, collection_title: str):
-    active_collection_in_db = get_active_collection(db, user_id)
+async def upsert_active_collection(db: Session, user_id: int, collection_title: str):
+    active_collection_in_db = await get_active_collection(db, user_id)
     if active_collection_in_db is not None:  # get_active_collection returns scalar or None
-        db.query(models.ActiveCollection)\
-            .filter(
+        stmt = update(models.ActiveCollection)\
+            .values({"collection_title": collection_title})\
+            .where(
                 models.ActiveCollection.user_id == user_id,
                 models.ActiveCollection.collection_title != ""
-            )\
-            .update({"collection_title": collection_title})
+            )        
+        # db.query(models.ActiveCollection)\
+        #     .filter(
+        #         models.ActiveCollection.user_id == user_id,
+        #         models.ActiveCollection.collection_title != ""
+        #     )\
+        #     .update({"collection_title": collection_title})
     else:
-        db.add(models.ActiveCollection(
-                user_id=user_id, collection_title=collection_title
-        ))
-    db.commit()
-    db.flush()
+        stmt = insert(models.ActiveCollection)\
+            .values(user_id=user_id, collection_title=collection_title)
+        # db.add(models.ActiveCollection(
+        #         user_id=user_id, collection_title=collection_title
+        # ))
+    await db.execute(stmt)
+    await db.commit()
+    await db.flush()
 
 
-def get_active_client(db: Session, user_id: int):
+async def get_active_client(db: Session, user_id: int):
     query = select(
         models.ActiveClient.client_id)\
         .where(
             models.ActiveClient.user_id == user_id
         )
-    result = db.execute(query)
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 
-def upsert_active_client(db: Session, user_id: int, client_id: str):
-    active_client_in_db = get_active_client(db, user_id)
+async def upsert_active_client(db: Session, user_id: int, client_id: str):
+    active_client_in_db = await get_active_client(db, user_id)
     if active_client_in_db is not None:
-        db.query(models.ActiveClient)\
-            .filter(models.ActiveClient.user_id == user_id)\
-            .update({"client_id": client_id})
+        stmt = update(models.ActiveClient)\
+            .values(client_id=client_id)\
+            .where(models.ActiveClient.user_id == user_id)
+        # db.query(models.ActiveClient)\
+        #     .filter(models.ActiveClient.user_id == user_id)\
+        #     .update({"client_id": client_id})
     else:
-        db.add(models.ActiveClient(
-            user_id=user_id, client_id=client_id
-        ))
-    db.commit()
-    db.flush()
+        stmt = insert(models.ActiveClient)\
+            .values({"user_id": user_id, "client_id": client_id})
+        # 
+    await db.execute(stmt)
+    await db.commit()
+    await db.flush()
 
 
 

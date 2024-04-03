@@ -2,13 +2,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 from sqlalchemy import delete
 from teledash.db import models 
-from teledash import models as schemas
+from teledash import schemas as schemas
 from typing import Union, List, Iterable
-from sqlalchemy import func, or_, and_
+from sqlalchemy import func, or_, and_, insert, update
 from teledash import config
 
 
-def get_channel_by_url(
+async def get_channel_by_url(
     db: Session, 
     url: Union[str, None]=None, 
     is_joined: Union[bool, None]=None
@@ -37,7 +37,7 @@ def get_channel_by_url(
         models.ChannelCommon.updated_at,
         )\
         .where(*filters)
-    raw_result = db.execute(query)
+    raw_result = await db.execute(query)
     result = raw_result.mappings().all()
 
     if url is not None:
@@ -45,7 +45,7 @@ def get_channel_by_url(
     return result
 
 
-def get_channels_from_list_of_urls(
+async def get_channels_from_list_of_urls(
     db: Session,
     urls: Iterable[str],
     user_id: int
@@ -83,7 +83,7 @@ def get_channels_from_list_of_urls(
             models.ChannelCommon.url == models.ChannelCustom.channel_url
         )\
         .where(*filters)
-    result = db.execute(query)
+    result = await db.execute(query)
     return result.mappings().all()
 
 
@@ -116,7 +116,7 @@ def get_channels_custom_from_list_of_urls(
     return result.mappings().all()
 
 
-def get_channel_custom_by_url(db: Session, url: str, user_id: int):
+async def get_channel_custom_by_url(db: Session, url: str, user_id: int):
     query = select(
         models.ChannelCustom
         )\
@@ -124,7 +124,7 @@ def get_channel_custom_by_url(db: Session, url: str, user_id: int):
             func.lower(models.ChannelCustom.channel_url) == url.lower(),
             models.ChannelCustom.user_id == user_id
         )
-    raw_result = db.execute(query)
+    raw_result = await db.execute(query)
     result = raw_result.mappings().all()
     result = result[0] if result else None
     return result
@@ -163,32 +163,41 @@ def get_channel_with_custom_fields(
     return result.mappings().all()
 
 
-def insert_channel_common(
+async def insert_channel_common(
     db: Session, channel: schemas.ChannelCommon
 ):
     channel.url = channel.url.lower()  # be sure new channels are lower
     db_channel = models.ChannelCommon(**dict(channel))
-    db.add(db_channel)
-    db.commit()
-    db.refresh(db_channel)
+    stmt = insert(models.ChannelCommon)\
+        .values(db_channel)
+    # db.add(db_channel)
+    await db.execute(stmt)
+    await db.commit()
+    await db.refresh(db_channel)
     return db_channel
 
 
-def upsert_channel_common(
+async def upsert_channel_common(
     db: Session, channel: schemas.ChannelCommon
 ):
-    channel_in_db = get_channel_by_url(db, channel.url)
+    channel_in_db = await get_channel_by_url(db, channel.url)
     if channel_in_db:
         channel.url = channel_in_db["url"]  # backward compatibility to 'not lower' channels
-        db.query(models.ChannelCommon)\
-            .filter_by(url=channel.url)\
-            .update(dict(channel))
+        stmt = update(models.ChannelCommon)\
+            .values(dict(channel))\
+            .where(url=channel.url)
+        # db.query(models.ChannelCommon)\
+        #     .filter_by(url=channel.url)\
+        #     .update(dict(channel))
     else:
         channel.url = channel.url.lower()  # new channels are all lowered
         channel_common = models.ChannelCommon(**dict(channel))
-        db.add(channel_common)
-    db.commit()
-    db.flush()
+        stmt = insert(models.ChannelCommon)\
+            .values(channel_common)
+        # db.add(channel_common)
+    await db.execute(stmt)
+    await db.commit()
+    await db.flush()
     return dict(channel)
 
 
@@ -220,15 +229,19 @@ def update_messages_count(
     db.flush()
 
 
-def update_channel_common(
+async def update_channel_common(
     db: Session, channel_url: str, update_dict: dict
 ):
+    stmt = update(models.ChannelCommon)\
+            .values(dict(update_dict))\
+            .where(models.ChannelCommon.url == channel_url)
     
-    db.query(models.ChannelCommon)\
-        .filter_by(url=channel_url)\
-        .update(update_dict)
-    db.commit()
-    db.flush()
+    # db.query(models.ChannelCommon)\
+    #     .filter_by(url=channel_url)\
+    #     .update(update_dict)
+    await db.execute(stmt)
+    await db.commit()
+    await db.flush()
 
 
 def insert_channel_custom(
@@ -242,12 +255,13 @@ def insert_channel_custom(
     return db_channel
 
 
-def upsert_channel_custom(
+async def upsert_channel_custom(
     db: Session, channel: schemas.ChannelCustom      
 ):
     # channel.channel_url = channel.channel_url.lower()
-    channel_in_db = get_channel_custom_by_url(db, channel.channel_url, channel.user_id)
-    
+    channel_in_db = await get_channel_custom_by_url(
+        db, channel.channel_url, channel.user_id
+    )
     if channel_in_db:
         # this is due to 'select(ChannelCustom)' in query. TODO: fix this
         channel_in_db = next(v.to_dict() for k, v in channel_in_db.items())
@@ -256,15 +270,21 @@ def upsert_channel_custom(
             models.ChannelCustom.channel_url == channel_in_db["channel_url"],
             models.ChannelCustom.user_id == channel_in_db["user_id"]
         ]
-        db.query(models.ChannelCustom)\
-            .filter(*filters)\
-            .update(dict(channel))
+        stmt = update(models.ChannelCustom)\
+            .values(dict(channel))\
+            .where(*filters)
+        # db.query(models.ChannelCustom)\
+        #     .filter(*filters)\
+        #     .update(dict(channel))
     else:
         channel.channel_url = channel.channel_url.lower()  # new channels will be lower 
         channel_custom = models.ChannelCustom(**dict(channel))
-        db.add(channel_custom)
-    db.commit()
-    db.flush()
+        stmt = insert(models.ChannelCustom)\
+            .values(**channel_custom.to_dict())
+        # db.add(channel_custom)
+    await db.execute(stmt)
+    await db.commit()  # we should commit everything after collection created
+    await db.flush()  # same?
     return dict(channel)
 
 
@@ -321,7 +341,7 @@ def insert_single_channel_in_collection(
     return db_channel
 
 
-def insert_channel_collection(
+async def insert_channel_collection(
     db: Session, 
     collection_title: str,
     user_id: int,
@@ -334,12 +354,13 @@ def insert_channel_collection(
         for channel in channels
     ]
     
-    db.bulk_save_objects(db_channels_collection)  # db.add_all(db_channels_collection) also ok
-    db.commit()
+    # await db.bulk_save_objects(db_channels_collection)  # db.add_all(db_channels_collection) also ok
+    db.add_all(db_channels_collection)
+    await db.commit()  # commit at the end of /add_collection ?
     return db_channels_collection
 
 
-def get_channel_collection(
+async def get_channel_collection(
     db: Session, 
     user_id: int,
     collection_title: str
@@ -372,11 +393,11 @@ def get_channel_collection(
             func.lower(models.ChannelCustom.channel_url) == func.lower(models.ChannelCollection.channel_url)
         )\
         .where(*filters)
-    result = db.execute(query)
+    result = await db.execute(query)
     return result.mappings().all()
 
 
-def get_channel_collection_titles_of_user(
+async def get_channel_collection_titles_of_user(
     db: Session, user_id: int
 ):
     filters = [
@@ -389,7 +410,7 @@ def get_channel_collection_titles_of_user(
         .where(*filters)\
         .distinct()
     
-    result = db.execute(query)
+    result = await db.execute(query)
     return result.scalars().all()
 
 
@@ -436,7 +457,7 @@ def get_collection_jobs_of_user(db: Session, user_id: int, status="in_progress")
     return result.mappings().all()
 
 
-def delete_collection_for_user(
+async def delete_collection_for_user(
     db: Session, 
     collection_title: str,
     user_id: int,
@@ -449,8 +470,8 @@ def delete_collection_for_user(
         models.ChannelCollection
         )\
         .where(*filters)
-    db.execute(query)
-    db.commit()
+    await db.execute(query)
+    await db.commit()
 
 
 def get_entity_from_db(db: Session, entity_id: int, entity_type: int):
@@ -470,7 +491,7 @@ def get_entity_from_db(db: Session, entity_id: int, entity_type: int):
     return result.mappings().all()
 
 
-def get_entities_in_list(
+async def get_entities_in_list(
     db: Session, entities: Iterable[schemas.Entity]
 ):
     if not entities:
@@ -490,7 +511,7 @@ def get_entities_in_list(
         models.Entity.phone
         )\
         .where(*filters)
-    result = db.execute(query)
+    result = await db.execute(query)
     return result.mappings().all()
 
 
@@ -505,16 +526,16 @@ def insert_entity(
     return db_entity
 
 
-def insert_entities(
+async def insert_entities(
     db: Session,
     entities: List[schemas.Entity]
 ):
     db_entities = [
         models.Entity(**dict(entity)) for entity in entities
     ]
-    
-    db.bulk_save_objects(db_entities)
-    db.commit()
+    db.add_all(db_entities)  # it looks non async, I dont know why sqlalchemy suggests it
+    # db.bulk_save_objects(db_entities)
+    await db.commit()
     return db_entities
     
     
