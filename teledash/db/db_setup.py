@@ -5,10 +5,7 @@ from teledash import config
 import os
 
 
-SQLALCHEMY_DATABASE_URL = (
-    'sqlite:///' + 
-    f'{os.path.join(config.SESSIONS_FOLDER, "teledash.db")}'
-)
+
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
     future=True,
