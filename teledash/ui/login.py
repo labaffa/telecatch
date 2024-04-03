@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from teledash.templates.login_forms import PHONE_FORM, \
     CODE_FORM, PASSWORD_FORM    
@@ -11,8 +11,10 @@ from fastapi.templating import Jinja2Templates
 import asyncio
 from teledash.channel_messages import load_default_channels_in_db, \
     update_message_counts, update_participant_counts
-from teledash import models
-from teledash.api.login import create_user
+from teledash import schemas
+from jose import jwt
+from urllib.parse import urljoin
+# from teledash.api.login import create_user
 
 
 ui_login_router = APIRouter()
@@ -101,7 +103,7 @@ async def form_for_app_login(
     elif len(form) > 2:
         form_action = "signup" 
         create_user(
-            models.UserAuth(
+            schemas.UserAuth(
                 **{
                     "username": form["username"],
                     "password": form["password"],
@@ -111,5 +113,50 @@ async def form_for_app_login(
 
     return templates.TemplateResponse(
         "app_login.html",
+        {"request": request}
+    )
+
+
+@ui_login_router.post(
+    "/reset_password",
+    response_class=HTMLResponse,
+    summary="Form to reset password",
+    include_in_schema=False
+)
+@ui_login_router.get(
+    "/reset_password",
+    response_class=HTMLResponse,
+    summary="Form to reset password",
+    include_in_schema=False
+)
+async def form_for_password_reset(
+    request: fastapi.Request, ac: str
+):
+    
+    try:
+        jwt.decode(
+            ac,
+            config.settings.JWT_SECRET_KEY, 
+            algorithms=[config.settings.ALGORITHM],
+            audience='fastapi-users:reset'
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Token not valid"
+        )
+    form = await request.form()
+    if len(form) > 0:
+        print(form)
+        host = urljoin(request.headers.get('referer'), "/")
+        url = urljoin(host, f"/v1/auth/reset-password")
+        payload = {
+            "token": ac,
+            "password": form["password"]
+        }
+        requests.post(url, data=payload)
+
+    return templates.TemplateResponse(
+        "reset_password_form.html",
         {"request": request}
     )
