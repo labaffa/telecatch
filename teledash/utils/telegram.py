@@ -6,19 +6,30 @@ https://github.com/digitalmethodsinitiative/4cat/blob/master/datasources/telegra
 from pathlib import Path
 import hashlib
 from telethon import TelegramClient, types
-from teledash import config
+from teledash import config, schemas
 import asyncio
-from tinydb import Query
 import fastapi
 from teledash.utils.db import tg_client as ut
+from teledash.utils.db import channel as uc
 from sqlalchemy.orm import Session
+import re
 
 
 class NeedsCodeException(Exception):
     pass
 
 
-def create_session_id(api_phone, api_id, api_hash):
+def parse_phone(phone):
+    """Parses the given phone, or returns `None` if it's invalid."""
+    if isinstance(phone, int):
+        return str(phone)
+    else:
+        phone = re.sub(r'[+()\s-]', '', str(phone))
+        if phone.isdigit():
+            return phone
+
+
+def create_session_id(phone_or_bot_token, api_id, api_hash, phone=True):
     """
     Generate a filename for the session file
 
@@ -30,7 +41,10 @@ def create_session_id(api_phone, api_id, api_hash):
     :param str api_hash:  Telegram API Hash
     :return str: A hash value derived from the input
     """
-    hash_base = api_phone.strip().replace("+", "") + str(api_id).strip() + api_hash.strip()
+    if phone:
+        phone_or_bot_token = phone_or_bot_token.strip().replace("+", "")
+    
+    hash_base = phone_or_bot_token + str(api_id).strip() + api_hash.strip()
     return hashlib.blake2b(hash_base.encode("ascii")).hexdigest()
 
 
@@ -45,6 +59,47 @@ def cancel_start():
     be told they need to re-authenticate via 4CAT.
     """
     raise RuntimeError("Connection cancelled")
+
+
+async def create_bot_client(
+    bot_token, api_id, api_hash, *args
+):
+    session_id = create_session_id(
+        bot_token, api_id, api_hash, phone=False
+    )
+    session_file = session_id + '.session'
+    session_path = Path(config.SESSIONS_FOLDER).joinpath(
+        session_file
+    )
+    
+    client = None
+    
+    try:
+
+        client = TelegramClient(
+            str(session_path), int(api_id), api_hash
+        )
+        await client.start(bot_token=bot_token)
+        out = {
+            "needs_code": False,
+            "client": client,
+            "detail": "login done",
+            "status": "ok",
+            "session_file": session_file
+        }
+    except Exception as e:
+        print(f"problem authenticating bot due to {str(e)}")
+        out = {
+            "needs_code": False,
+            "client": None,
+            "detail": str(e),
+            "status": "failed",
+            "session_file": session_file
+        }
+    finally:
+        if client and hasattr(client, "disconnect"):
+            await client.disconnect()
+    return out
 
 
 async def create_client(
@@ -223,7 +278,7 @@ async def get_authenticated_client(
         client_id
     )
     print("[get_authenticated]: ", client_id)
-    client_in_db = ut.get_client_meta(db, client_id)
+    client_in_db = await ut.get_client_meta(db, client_id)
     if not client_in_db:
         raise fastapi.HTTPException(
             status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
