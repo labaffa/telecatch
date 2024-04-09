@@ -2,7 +2,7 @@ from fastapi import Depends, Request, BackgroundTasks
 from typing import Optional
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, \
-    JWTStrategy
+    JWTStrategy, CookieTransport
 from fastapi_users.db import SQLAlchemyUserDatabase
 from teledash.db.db_setup import get_user_db
 from teledash.config import settings, mail_connection_config
@@ -11,6 +11,9 @@ from fastapi_mail import FastMail, MessageSchema, MessageType
 from jose import JWTError, jwt
 import datetime as dt
 from urllib.parse import urljoin
+
+
+AUTH_EXPIRATION_TIME = 3600*24*365
 
 
 class UserManager(UUIDIDMixin, BaseUserManager):
@@ -64,9 +67,13 @@ async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db
 
 bearer_transport = BearerTransport(tokenUrl="/v1/auth/login")
 
+# COOKIE AUTH
+cookie_transport = CookieTransport(cookie_max_age=AUTH_EXPIRATION_TIME)
+
 
 def get_jwt_strategy():
-    return JWTStrategy(secret=settings.JWT_SECRET_KEY, lifetime_seconds=3600)
+    return JWTStrategy(
+         secret=settings.JWT_SECRET_KEY, lifetime_seconds=AUTH_EXPIRATION_TIME)
 
 
 auth_backend = AuthenticationBackend(
@@ -75,7 +82,15 @@ auth_backend = AuthenticationBackend(
     get_strategy=get_jwt_strategy                                     
 )
 
-fastapi_users = FastAPIUsers(get_user_manager, [auth_backend])
+
+cookie_auth_backend = AuthenticationBackend(
+  name="cookie",  # I changed the name
+  transport=cookie_transport,
+  get_strategy=get_jwt_strategy,
+)
+
+
+fastapi_users = FastAPIUsers(get_user_manager, [auth_backend, cookie_auth_backend])
 
 active_user = fastapi_users.current_user(active=True)
 
