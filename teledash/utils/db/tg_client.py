@@ -6,9 +6,9 @@ from teledash import schemas as schemas
 from typing import Union
 
 
-def get_clients_meta(db: Session):
+async def get_clients_meta(db: Session):
     query = select(models.TgClient)
-    result = db.execute(query)
+    result = await db.execute(query)
     return result.fetchall()
 
 
