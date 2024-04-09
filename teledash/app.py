@@ -163,6 +163,24 @@ app.include_router(
 )
 
 
-# app.add_exception_handler(
-#     config.NotAuthenticatedException, auth_exception_handler
-# )
+
+def auth_exception_handler(request, exc):
+    """
+    https://stackoverflow.com/questions/73630653
+
+    Redirect the user to the login page if not logged in
+    """
+    from fastapi.encoders import jsonable_encoder
+
+    if not request.url.path.startswith("/api/"):
+        return RedirectResponse(
+            url='/app_login?next=' + str(request.url)
+        )
+    else:
+        return ORJSONResponse(
+            status_code=401, content=jsonable_encoder({"detail": "unauthorized"}))
+    
+
+app.add_exception_handler(
+   401, auth_exception_handler
+)

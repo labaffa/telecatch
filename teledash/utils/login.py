@@ -138,15 +138,3 @@ async def get_current_active_user(
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
-
-def auth_exception_handler(request, exc):
-    """
-    https://stackoverflow.com/questions/73630653
-
-    Redirect the user to the login page if not logged in
-    """
-    
-    return RedirectResponse(
-        url='/app_login?next=' + str(request.url)
-    )
