@@ -1,9 +1,7 @@
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 from teledash.config import SQLALCHEMY_DATABASE_URL
 from teledash.db.models import User
-import os
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi import Depends
 from typing import AsyncGenerator
