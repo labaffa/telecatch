@@ -87,7 +87,7 @@ async def get_channels_from_list_of_urls(
     return result.mappings().all()
 
 
-def get_channels_custom_from_list_of_urls(
+async def get_channels_custom_from_list_of_urls(
     db: Session,
     user_id: int,
     urls: Iterable[str]
@@ -112,7 +112,7 @@ def get_channels_custom_from_list_of_urls(
         #     models.ChannelCustom,
         #     models.ChannelCommon.id == models.ChannelCustom.channel_id
         # )\
-    result = db.execute(query)
+    result = await db.execute(query)
     return result.mappings().all()
 
 
