@@ -27,7 +27,24 @@
     <ul  class="right">
         <li>
             Logged in as {{user.username}} (
-            <a href="/logout">logout</a> )
+            <button id="logout"></button>
+            <a href="javascript:logOut()">logout</a> )
         </li>
     </ul>
+    <script language="javascript"> 
+
+        function logOut(){
+            fetch(`/api/v1/cookie/logout`, 
+               { 
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+                }
+            ).then((response) => {
+                if (response.status == 204){
+                    window.location.replace('/app_login')
+                }
+            })
+    }
+     
+     </script>
 </nav>
