@@ -1,33 +1,22 @@
-from fastapi import FastAPI, Depends
-from fastapi.responses import ORJSONResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import ORJSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from tinydb import Query
 from fastapi.middleware.cors import CORSMiddleware
 from teledash.ui.login import ui_login_router
-from teledash.api.login import api_login_router
-from teledash.api.channels import channel_router
-# from teledash import config
-# from teledash.utils.login import auth_exception_handler
+from teledash.utils import telegram
 from teledash.api.search import search_router
-# from teledash.ui.home import home_router
-# from teledash.api.admin import admin_router
-# from teledash.utils.telegram import get_authenticated_client
-# from teledash.ui import clients
-from teledash.api.user import router as user_router
+from teledash.ui.home import home_router as ui_home_router
+from teledash.ui.clients import router as ui_clients_router
 from teledash.api.collections import collection_router
 from teledash.api.telegram_clients import clients_router
-# from teledash.ui.channels import router as channels_router
-# from teledash.db.models import Base
-# from teledash.db.db_setup import engine, get_db
-# from teledash.utils.db import tg_client as ut
-from teledash.db.db_setup import create_db_and_tables
-from teledash.db.models import User
-from teledash.utils.users import auth_backend, active_user, fastapi_users
+from teledash.api.channels import channel_router
+from teledash.ui.channels import router as ui_channels_router
+from teledash.utils.db import tg_client as ut
+from teledash.db.db_setup import create_db_and_tables, async_session_maker
+from teledash.utils.users import auth_backend, fastapi_users, cookie_auth_backend
 from teledash.schemas import UserCreateFU, UserReadFU, UserUpdateFU
 from collections import defaultdict
-
-
-# Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(
@@ -126,14 +115,14 @@ async def startup_event():
 #     prefix=settings.API_V1_STR
 #     )
 
-app.include_router(search_router, prefix="/v1", tags=["search"])
-# app.include_router(home_router)
+app.include_router(ui_home_router, include_in_schema=False)
 # app.include_router(admin_router)
-# app.include_router(clients.router)
+app.include_router(ui_clients_router, include_in_schema=False)
 # app.include_router(user_router)
-# app.include_router(channels_router)
-# app.include_router(channel_router)
+app.include_router(ui_channels_router, include_in_schema=False)
+app.include_router(channel_router, prefix="/api/v1/channels", tags=["channels"])
 # app.include_router(api_login_router)
+app.include_router(ui_login_router, include_in_schema=False)
 app.include_router(search_router, prefix="/api/v1", tags=["search"])
 app.include_router(collection_router, prefix="/api/v1/collections", tags=["collections"])
 app.include_router(clients_router, prefix="/api/v1/clients", tags=["telegram clients"])
