@@ -38,7 +38,7 @@
                         <label>
                             Username or Email Address<span class="req">*</span>
                         </label>
-                        <input name="username" type="text" required autocomplete="off"/>
+                        <input id="username" name="username" type="text" required autocomplete="off"/>
                     </div>
                     
                     <div class="field-wrap">
@@ -48,7 +48,7 @@
                         <input name="password" type="password" required autocomplete="off"/>
                     </div>
                     
-                    <p class="forgot"><a href="#">Forgot Password?</a></p>
+                    <p class="forgot"><a href="javascript:forgotPassword()">Forgot Password?</a></p>
                     
                     <button id="loginSubmit" class="button button-block"/>Log In</button>
                     
@@ -65,7 +65,7 @@
                         <label>
                             Email Address<span class="req">*</span>
                         </label>
-                        <input name="email" type="email" required autocomplete="off"/>
+                        <input id="email" name="email" type="email" required autocomplete="off"/>
                     </div>
                     <div class="field-wrap">
                         <label>
@@ -107,5 +107,30 @@
     <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <script src="{{ url_for('static', path='/js/auth.js').include_query_params(version='1') }}"></script>
+    <script language="javascript">
+       async function forgotPassword(){
+            let emailAddress = document.getElementById('username').value;
+            let text = `Send link to recovery the password at ${emailAddress}?`
+            let loginStatus = document.getElementById('loginStatus')
+            if (confirm(text) == true){
+                fetch(`/api/v1/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email: emailAddress})
+                }).then(async function (response) {
+                    if (response.status == 202) {
+                        loginStatus.innerText = `Email sent to ${emailAddress}`
+                    } else {
+
+                        loginStatus.innerText = `Response status is ${response.status}`
+                        response = await response.json();
+                        let msg = response.detail[0]["msg"]
+                        loginStatus.innerText = `Problems recovering password: ${msg}`
+                    }
+                })
+            }
+
+       } 
+    </script>
 </body>
 </html>
