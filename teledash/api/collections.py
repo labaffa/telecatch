@@ -261,3 +261,45 @@ async def update_metadata_of_collections_channel(
         "status": "ok"
         # "data": CHAT_UPDATE_TASKS.keys()
         }
+
+
+@collection_router.post("/uploadfile")
+async def upload_entities(file: fastapi.UploadFile):
+    
+    content = await file.read()
+    error = None
+    data = []
+    try:
+        # Try parsing as CSV
+        df = pd.read_csv(
+            io.BytesIO(content), 
+            sep=None, 
+            engine="python",
+            encoding="ISO-8859-1"
+            
+        )
+    
+    except Exception:
+        try:
+            df = pd.read_excel(io.BytesIO(content))
+        except Exception as e:
+            raise fastapi.HTTPException(
+                status_code=400, 
+                detail="File could not be parsed. Try to use .xls, .xlsx, .csv, .tsv"
+            )
+    try:
+        df.columns = df.columns.str.lower()
+        df = df.replace({np.nan: None})
+        for row in df.to_dict("records"):
+            row = schemas.ChannelUpload(**row).model_dump()
+            data.append(row)
+        return {
+            "message": "File ok",
+            "error": error,
+            "rows": data
+        }
+    except Exception as e:
+        raise fastapi.HTTPException(
+            status_code=400, detail=str(e)
+        )
+    
