@@ -134,32 +134,37 @@ app.include_router(search_router, prefix="/v1", tags=["search"])
 # app.include_router(channels_router)
 # app.include_router(channel_router)
 # app.include_router(api_login_router)
-# app.include_router(ui_login_router)
-app.include_router(collection_router, prefix="/v1/collections", tags=["collections"])
-app.include_router(clients_router, prefix="/v1/clients", tags=["telegram clients"])
+app.include_router(search_router, prefix="/api/v1", tags=["search"])
+app.include_router(collection_router, prefix="/api/v1/collections", tags=["collections"])
+app.include_router(clients_router, prefix="/api/v1/clients", tags=["telegram clients"])
 app.include_router(
     fastapi_users.get_auth_router(auth_backend), 
-    prefix="/v1/auth",
+    prefix="/api/v1/auth",
     tags=["auth"]
 )
 app.include_router(
+    fastapi_users.get_auth_router(cookie_auth_backend),
+    prefix="/api/v1/cookie",
+    tags=["auth"],
+)
+app.include_router(
     fastapi_users.get_register_router(UserReadFU, UserCreateFU),
-    prefix="/v1/auth",
+    prefix="/api/v1/auth",
     tags=["auth"],
 )
 app.include_router(
     fastapi_users.get_reset_password_router(), 
-    prefix="/v1/auth",
+    prefix="/api/v1/auth",
     tags=["auth"]
 )
 app.include_router(
     fastapi_users.get_verify_router(UserReadFU),
-    prefix="/v1/auth",
+    prefix="/api/v1/auth",
     tags=["auth"]
 )
 app.include_router(
     fastapi_users.get_users_router(UserReadFU, UserUpdateFU), 
-    prefix="/v1/users",
+    prefix="/api/v1/users",
     tags=["users"]
 )
 
