@@ -1,22 +1,16 @@
 from teledash import schemas
 from fastapi import APIRouter, HTTPException, Depends, Request, \
-    WebSocket, Query, BackgroundTasks, UploadFile
+    Query, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 import base64
-from teledash import config
 from typing import Union, List, Dict
 from sqlalchemy.orm import Session
-from teledash.db.db_setup import get_db, get_async_session
+from teledash.db.db_setup import get_async_session
 from teledash.utils.db import channel as uc
 from teledash.utils import telegram
-from teledash import schemas as schemas
-import time
-from uuid import UUID, uuid4
-import asyncio
-import json
-from teledash import config
-from sqlalchemy import delete
+from teledash import schemas
+from uuid import UUID
 from teledash.db import models as db_models
 from teledash.utils.db import user as uu
 from teledash.utils.users import active_user
@@ -49,73 +43,73 @@ async def read_get_channel(
         bytes: lambda v: base64.b64encode(v).decode('utf-8')}))
 
 
-# @channel_router.get("/api/channels_info")
-# async def info_of_channels_and_groups(
-#     db: Session = Depends(get_db),
-#     is_joined: Union[bool, None]=None,
-#     channel_urls: List[str]=Query(default=[]),
-#     user = Depends(config.settings.MANAGER)
-# ):
-#     # sql_result = uc.get_channel_by_url(db=db, is_joined=is_joined)
+@channel_router.get("/channels_info")
+async def info_of_channels_and_groups(
+    db: Session = Depends(get_async_session),
+    is_joined: Union[bool, None]=None,
+    channel_urls: List[str]=Query(default=[]),
+    user: db_models.User = Depends(active_user)
+):
+    # sql_result = uc.get_channel_by_url(db=db, is_joined=is_joined)
     
 
-#     # # TODO: understand why sql_result output is different from
-#     # # fewsboard one. 
-#     # channels = [row[0].to_dict() for row in sql_result]
+    # # TODO: understand why sql_result output is different from
+    # # fewsboard one. 
+    # channels = [row[0].to_dict() for row in sql_result]
 
-#     # the if-else is used here because uc function gets all the channels  
-#     # present in the DB if channel_urls is empty (should I modify this behavior?)
-#     if channel_urls:
-#         channels = uc.get_channels_from_list_of_urls(db, channel_urls, user.id)
-#     else:
-#         channels = []
-#     meta = {
-#         "channel_count": sum(
-#             1 for c in channels if c["type"] == "channel"),
-#         "group_count": sum(
-#             1 for c in channels if c["type"] != "channel"),
-#         "participant_count": sum(
-#             int(c["participants_count"]) 
-#             for c in channels if c["participants_count"]),
-#         "msg_count": sum(
-#             int(c["messages_count"]) 
-#             for c in channels if c["messages_count"])
-#     }
-#     data = [schemas.ChannelInfo(**c) for c in channels]
-#     return {"meta": meta, "data": data}
+    # the if-else is used here because uc function gets all the channels  
+    # present in the DB if channel_urls is empty (should I modify this behavior?)
+    if channel_urls:
+        channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user.id)
+    else:
+        channels = []
+    meta = {
+        "channel_count": sum(
+            1 for c in channels if c["type"] == "channel"),
+        "group_count": sum(
+            1 for c in channels if c["type"] != "channel"),
+        "participant_count": sum(
+            int(c["participants_count"]) 
+            for c in channels if c["participants_count"]),
+        "msg_count": sum(
+            int(c["messages_count"]) 
+            for c in channels if c["messages_count"])
+    }
+    data = [schemas.ChannelInfo(**c) for c in channels]
+    return {"meta": meta, "data": data}
 
 
-# @channel_router.get("/api/channels_custom_info")
-# async def info_of_channels_custom(
-#     db: Session = Depends(get_db),
-#     channel_urls: List[str]=Query(default=[]),
-#     user = Depends(config.settings.MANAGER)
-# ):
-#     channels = uc.get_channels_custom_from_list_of_urls(db, user.id, channel_urls)
-#     data = [schemas.ChannelCustom(**c) for c in channels]
-#     return data
+@channel_router.get("/channels_custom_info")
+async def info_of_channels_custom(
+    db: Session = Depends(get_async_session),
+    channel_urls: List[str]=Query(default=[]),
+    user = Depends(active_user)
+):
+    channels = await uc.get_channels_custom_from_list_of_urls(db, user.id, channel_urls)
+    data = [schemas.ChannelCustom(**c) for c in channels]
+    return data
 
 
 # @channel_router.post(
 #     "/api/channel", 
-#     response_model=models.ChannelCommon
+#     response_model=schemas.ChannelCommon
 # )
 # async def add_channel(
 #     request: Request,
-#     channel: models.ChannelCreate,
+#     channel: schemas.ChannelCreate,
 #     client_id: str,
-#     db: Session = Depends(get_db)
+#     db: Session = Depends(get_async_session)
 # ):
 #     tg_client = request.app.state.clients.get(client_id)
 #     if tg_client is None:
 #         tg_client = await telegram.get_authenticated_client(db, client_id)
 #         request.app.state.clients[client_id] = tg_client
-#     channel_in_db = uc.get_channel_by_url(db, channel.url)
+#     channel_in_db = await uc.get_channel_by_url(db, channel.url)
 #     record = None
 #     if channel_in_db:
 #         return channel_in_db
 #     try:
-#         record = await build_chat_info(
+#         record = await telegram.build_chat_info(
 #             tg_client, channel.url
 #         )
         
