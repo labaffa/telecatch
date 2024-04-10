@@ -84,8 +84,9 @@ function resetPassword(){
         'token': token,
         'password': pwd
     }
+    
     // Object.keys(payload).forEach(key => payFormData.append(key, payload[key]));
-    fetch("/v1/auth/reset-password",
+    fetch("/api/v1/auth/reset-password",
         {
             method: "POST",
             headers: {

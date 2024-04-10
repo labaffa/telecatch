@@ -1,8 +1,9 @@
 const clientSubmit = document.getElementById('clientSubmit');
 const clientForm = document.getElementById('clientForm');
 
+
 async function setActiveClient(client_id){
-    fetch(`/api/set_active_client_of_user?client_id=${client_id}`,
+    fetch(`/api/v1/clients/set_active?client_id=${client_id}`,
     {
         method: 'POST',
         headers: {
@@ -30,7 +31,7 @@ async function setActiveClient(client_id){
 
 function loginTelegram(){
     let data = new FormData(clientForm);
-    fetch("/add_tg_phone",
+    fetch("/api/v1/clients/register",
         {
             method: "POST",
             body: data

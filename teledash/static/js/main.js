@@ -126,7 +126,7 @@ function callAPI(
     traditional=true
   );
   fetch(
-    `/api/search_channels?${queryString}`,
+    `/api/v1/search?${queryString}`,
     {
         headers: {
           'Cache-Control': 'no-cache'
@@ -355,7 +355,7 @@ $('#export-messages').click(function(e){
     offset_id: 0,
     out_format: window.export_format
   };
-  var url = new URL('/api/stream_search', window.location.origin);
+  var url = new URL('/api/v1/export_search', window.location.origin);
   url.search = new URLSearchParams(params).toString();
   console.log("prima")
   fetch(url, {
@@ -536,7 +536,7 @@ async function updateMonitor(){
     {channel_urls: window.channelUrls},
     traditional=true
   )
-  fetch(`/api/channels_info?${queryString}`, 
+  fetch(`/api/v1/channels/channels_info?${queryString}`, 
       {
           headers: {'Cache-Control': 'no-cache'}
       }
@@ -557,88 +557,88 @@ async function updateMonitor(){
 };
   
 
-$('#add-chat-btn').click(function(e){
+// $('#add-chat-btn').click(function(e){
   
-  let identifier = $('#add-chat').val();
-  var resp_ok;
-    fetch('/api/channel', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      //body: JSON.stringify(window.tableMessages)
-      body: JSON.stringify({
-        "identifier": identifier
-      })
-    })
-    .then( (response) => {
-      resp_ok = response.ok;
-      return response.json();
+//   let identifier = $('#add-chat').val();
+//   var resp_ok;
+//     fetch('/api/channel', {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json'
+//       },
+//       //body: JSON.stringify(window.tableMessages)
+//       body: JSON.stringify({
+//         "identifier": identifier
+//       })
+//     })
+//     .then( (response) => {
+//       resp_ok = response.ok;
+//       return response.json();
       
-    })
-    .then( (data) => {
-      if (resp_ok) {
-        fetch('/api/update_chat', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            "identifier": identifier
-          })
-        })
-        .then( (count_resp) => {
-          updateMonitor();
-          return data;
-        });
+//     })
+//     .then( (data) => {
+//       if (resp_ok) {
+//         fetch('/api/update_chat', {
+//           method: 'PUT',
+//           headers: {
+//             'Content-Type': 'application/json'
+//           },
+//           body: JSON.stringify({
+//             "identifier": identifier
+//           })
+//         })
+//         .then( (count_resp) => {
+//           updateMonitor();
+//           return data;
+//         });
       
-      }
-      else {
-        throw new Error(data.detail);
-      }
-    })
-    .catch( (error) => {
-      console.log(error)
-      alert(error)
-    })
-  }
-);
+//       }
+//       else {
+//         throw new Error(data.detail);
+//       }
+//     })
+//     .catch( (error) => {
+//       console.log(error)
+//       alert(error)
+//     })
+//   }
+// );
 
 
-$('#remove-chat-btn').click(function(e){
+// $('#remove-chat-btn').click(function(e){
   
-  let identifier = $('#remove-chat').val();
-  var resp_ok;
-    fetch('/api/channel', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      //body: JSON.stringify(window.tableMessages)
-      body: JSON.stringify({
-        "identifier": identifier
-      })
-    })
-    .then( (response) => {
-      resp_ok = response.ok;
-      return response.json();
+//   let identifier = $('#remove-chat').val();
+//   var resp_ok;
+//     fetch('/api/channel', {
+//       method: 'DELETE',
+//       headers: {
+//         'Content-Type': 'application/json'
+//       },
+//       //body: JSON.stringify(window.tableMessages)
+//       body: JSON.stringify({
+//         "identifier": identifier
+//       })
+//     })
+//     .then( (response) => {
+//       resp_ok = response.ok;
+//       return response.json();
       
-    })
-    .then( (data) => {
-      if (resp_ok) {
-        updateMonitor();
-        return data;
-      }
-      else {
-        throw new Error(data.detail);
-      }
-    })
-    .catch( (error) => {
-      console.log(error)
-      alert(error)
-    })
-  }
-);
+//     })
+//     .then( (data) => {
+//       if (resp_ok) {
+//         updateMonitor();
+//         return data;
+//       }
+//       else {
+//         throw new Error(data.detail);
+//       }
+//     })
+//     .catch( (error) => {
+//       console.log(error)
+//       alert(error)
+//     })
+//   }
+// );
 
 function monthDiff(d1, d2) {
   let months;
