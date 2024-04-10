@@ -95,25 +95,26 @@ async def startup_event():
  """
     app.state.clients = {}
     app.state.background_tasks = defaultdict(lambda: defaultdict(dict))
-    # db = next(get_db())
-    # clients_meta = [
-    #     x[0].to_dict() for x in ut.get_clients_meta(db)
-    # ]
+    # db = next(get_async_session())
+    async with async_session_maker() as db:
+        clients_meta = [
+            x[0].to_dict() for x in await ut.get_clients_meta(db)
+        ]
     
 
-    # # TODO: this should be done when an user logs in, instead
-    # # of loading all the clients at startup. 
-    # for client_item in clients_meta:
-    #     try:
-    #         idx = client_item["id"]
-    #         client = await get_authenticated_client(db, idx)
-    #         if client is not None:
-    #             app.state.clients[idx] = client
-    #     except Exception as e:
-    #         print(f"Error getting client for {client_item['phone']}: ", str(e))
-    #         pass
-    #     # APP_DATA["is_logged_in"] = False
-    #     # APP_DATA["phone"] = None
+    # TODO: this should be done when an user logs in, instead
+    # of loading all the clients at startup. 
+    for client_item in clients_meta:
+        try:
+            idx = client_item["id"]
+            client = await telegram.get_authenticated_client(db, idx)
+            if client is not None:
+                app.state.clients[idx] = client
+        except Exception as e:
+            print(f"Error getting client for {client_item['phone']}: ", str(e))
+            pass
+        # APP_DATA["is_logged_in"] = False
+        # APP_DATA["phone"] = None
     await create_db_and_tables()
     pass
     
