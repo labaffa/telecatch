@@ -22,7 +22,7 @@ SESSIONS_FOLDER =  os.path.join(SOURCE_FOLDER, "sessions")
 
 SQLALCHEMY_DATABASE_URL = (
     'sqlite+aiosqlite:///' + 
-    f'{os.path.join(config.SESSIONS_FOLDER, "teledash.db")}'
+    f'{os.path.join(SESSIONS_FOLDER, "teledash.db")}'
 )
 
 DEFAULT_CHANNELS = [
