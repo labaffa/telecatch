@@ -16,45 +16,44 @@ from teledash import schemas
 import asyncio
 from asyncio import current_task
 from sqlalchemy.ext.asyncio import async_scoped_session
+from typing import List
+from pydantic import BaseModel
 
 
 collection_router = fastapi.APIRouter()
 CHAT_UPDATE_TASKS = defaultdict(lambda: defaultdict(dict))
 
 
-@collection_router.post("/item/{title}")
-async def add_collection_of_channels_to_user_account(
-    request: fastapi.Request,
-    title: str,
-    file: fastapi.UploadFile,
-    db: Session = fastapi.Depends(get_async_session),
-    user: models.User =  fastapi.Depends(active_user)
-):
-    content = await file.read()
+class CollectionChannels(BaseModel):
+    title: str
+    channels: List[schemas.ChannelCustomCreate]
+
+
+async def file_to_list_of_channel_creators(input_file: fastapi.UploadFile):
+    content = await input_file.read()
     file_channels = []
     try:
-        # Try parsing as CSV
         df = pd.read_csv(
-            io.BytesIO(content), 
-            sep=None, 
+            io.BytesIO(content),
+            sep=None,
             engine="python",
             encoding="ISO-8859-1"
-            
         )
     except Exception:
         try:
             df = pd.read_excel(io.BytesIO(content))
         except Exception as e:
-            raise fastapi.HTTPException(
-                status_code=400, 
-                detail="File could not be parsed. Try to use .xls, .xlsx, .csv, .tsv"
-            )
-    # TODO: check if columns don't match schema
+            out =  {
+                "data": None,
+                "ok": False,
+                "detail": "File could not be parsed. Try to use .xls, .xlsx, .csv, .tsv"
+            }
     if len(df) == 0:
-        raise fastapi.HTTPException(
-            status_code=400, 
-            detail=f"List of channels for the collection '{title}' is empty"
-        )
+        out = {
+            "data": [],
+            "ok": False,
+            "detail": "File does not contain valid channels"
+        }
     try:
         df.columns = df.columns.str.lower()
         df = df.replace({np.nan: None})
@@ -64,10 +63,81 @@ async def add_collection_of_channels_to_user_account(
         for row in df.to_dict("records"):
             row_d = schemas.ChannelCustomCreate(**dict(row)).model_dump()
             file_channels.append(row_d)
+        out = {"data": file_channels, "ok": True, "detail": None}
     except Exception as e:
-        raise fastapi.HTTPException(
-            status_code=400, detail=str(e)
+        out = {"data": None, "ok": False, "detail": str(e)}
+    return out
+
+
+async def add_collection(db: Session, user: models.User, channels, title):
+    for channel in channels:
+        channel_url = channel["channel_url"]
+        channel_common_in_db = await uc.get_channel_by_url(
+            db, channel_url
         )
+        if not channel_common_in_db:
+            channel_common = schemas.ChannelCommon(url=channel_url.lower())
+            await uc.insert_channel_common(db, channel_common)
+        
+        channel_custom = schemas.ChannelCustom(**dict(channel), user_id=user.id)
+        await uc.upsert_channel_custom(db, channel_custom)
+    await uc.insert_channel_collection(
+        db, 
+        title, user.id, 
+        [schemas.ChannelCreate(url=x["channel_url"]) for x in channels]
+    )
+    record = await uc.get_channel_collection(db, user.id, title)
+    response = {
+        "status": "ok",
+        "data": record
+    }
+    return response
+
+
+@collection_router.post("/item/{title}")
+async def add_collection_of_channels_to_user_account(
+    request: fastapi.Request,
+    collection_body: CollectionChannels,
+    db: Session = fastapi.Depends(get_async_session),
+    user: models.User =  fastapi.Depends(active_user)
+):  
+    title = collection_body.title
+    channels = [dict(c) for c in collection_body.channels]
+    client_id = await uu.get_active_client(db, user.id)
+    tg_client = request.app.state.clients.get(client_id)
+    if tg_client is None:
+        tg_client = await telegram.get_authenticated_client(db, client_id)
+        request.app.state.clients[client_id] = tg_client
+    collection_in_db = await uc.get_channel_collection(
+        db, user.id, title)
+    if collection_in_db:
+        raise fastapi.HTTPException(
+            status_code=400, 
+            detail=f"Title '{title}' already present in your collections"
+        )
+    try:
+        response = await add_collection(db, user, channels, title)
+    except Exception as e:
+        raise fastapi.HTTPException(status_code=400, detail=str(e))
+    
+    return response
+
+
+@collection_router.post("/item/{title}/from_file")
+async def add_collection_of_channels_to_user_account_from_file(
+    request: fastapi.Request,
+    title: str,
+    file: fastapi.UploadFile,
+    db: Session = fastapi.Depends(get_async_session),
+    user: models.User =  fastapi.Depends(active_user)
+):
+    
+    file_parsing = await file_to_list_of_channel_creators(file)
+    if not file_parsing["ok"]:
+        raise fastapi.HTTPException(
+            status_code=400, detail=file_parsing["detail"]
+        )
+    channels = file_parsing["data"]
     
     client_id = await uu.get_active_client(db, user.id)
     tg_client = request.app.state.clients.get(client_id)
@@ -82,30 +152,11 @@ async def add_collection_of_channels_to_user_account(
             detail=f"Title '{title}' already present in your collections"
         )
     try:
-        for channel in file_channels:
-            channel_url = channel["channel_url"]
-            channel_common_in_db = await uc.get_channel_by_url(
-                db, channel_url
-            )
-            if not channel_common_in_db:
-                channel_common = schemas.ChannelCommon(url=channel_url.lower())
-                await uc.insert_channel_common(db, channel_common)
-            
-            channel_custom = schemas.ChannelCustom(**dict(channel), user_id=user.id)
-            await uc.upsert_channel_custom(db, channel_custom)
-        await uc.insert_channel_collection(
-            db, 
-            title, user.id, 
-            [schemas.ChannelCreate(url=x["channel_url"]) for x in file_channels]
-        )
-        record = await uc.get_channel_collection(db, user.id, title)
-        response = {
-            "status": "ok",
-            "data": record
-        }
-        return response
+        response = await add_collection(db, user, channels, title)
     except Exception as e:
         raise fastapi.HTTPException(status_code=400, detail=str(e))
+    
+    return response
 
 
 @collection_router.delete("/item/{title}")
