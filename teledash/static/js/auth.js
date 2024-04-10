@@ -76,30 +76,25 @@ $('.form').find('input, textarea').on('keyup blur focus', function (e) {
     ev.preventDefault();
     const loginForm = document.getElementById("loginForm")
     const data = new FormData(loginForm)
-    fetch("/login", {
+    fetch("/api/v1/cookie/login", {
         method: "POST",
         body: data
-      }).then((response) => response.json())
-        .then((data) => {
-          const status = document.getElementById("loginStatus");
-          if (data.detail) {
-              status.innerText = "Error loggin in: " + data.detail;
-          } else {
-              status.innerText = "Successfully logged in";
+      }).then((response) => {
+        const status = document.getElementById("loginStatus");
+        if (response.ok != true) {
+          status.innerText = "Error logging in: " + response.json().data.detail;
+        } else {
+          status.innerText = "Successfully logged in";
+          let params = new URLSearchParams(window.location.search);
+          let redirectURL = params.get("next") || '/';
 
-              // now we should/could one of the followings:
-              //    1. set token to localstorage
-              //    2. save token to cookies
-              // we are not doing it now because the backend 
-              // is setting cookies inside /login endpoint
-              // token = `${data.token_type} ${data.access_token}`;
-            let params = new URLSearchParams(window.location.search);
-            let redirectURL = params.get("next");
-            window.location.replace(redirectURL);
-            }
-        })
-        .catch((err) => {
+          window.location.replace(redirectURL);
+        }
+
+      }).catch((err) => {
           console.log("Error: ", err)
     })
 
   };
+
+
