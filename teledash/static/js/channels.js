@@ -47,7 +47,7 @@ fileSubmit.onclick = (ev) => {
     let form = document.getElementById('file-table-form');
     let data = new FormData(form);
 
-    fetch('/uploadfile', {
+    fetch('/api/v1/collections/uploadfile', {
         method: 'POST',
         body: data
     }).then((response) => {
@@ -280,6 +280,7 @@ $('#collection-submit').click(function(ev){
       {"collection_title": collectionTitle, "channel_urls": channelcreate_items}
     )
     
+    
     let initPayload = JSON.stringify(
       window.dataTable.rows.map(function(x){
         return {
@@ -290,95 +291,158 @@ $('#collection-submit').click(function(ev){
         }
       })
     );
-
-    fetch(`/api/init_many_channels_to_db`, {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json' 
-      },
-      body: initPayload
+    let postCollectionPayload = JSON.stringify({
+      "title": collectionTitle,
+      "channels": window.dataTable.rows.map(function(x){
+        return {
+          channel_url: x.url.trim(), 
+          category: x.category, 
+          language: x.language, 
+          location: x.location
+        }
+      })}
+    );
+    fetch(`/api/v1/collections/item/${collectionTitle}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: postCollectionPayload
     }).then(
       (response) => {
         if (response.ok) {
           return response.json()
         }
-        throw new Error('Error inserting channels in db. Collection not saved')
-        }
+        throw new Error(`Error inserting channels in db. Collection not saved`)
+      }
     ).then((data) => {
+      let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
+      $('#collection-titles').append(el);
       
-      console.log("channels initiated if not already")
+      console.log("saved collection in user account")
       console.log(data)
-      fetch(`/api/channel_collection?client_id=${window.activeClient.client_id}`,{
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json' 
-        },
-        body: payload
-        }).then(
-          (response) => {
-            if (response.ok) {
-              return response.json();
-            }
-            
-            
-            throw new Error('Collection not added. Possible reasons: client not registered, title already present in your account');
-          }
-        ).then((data) => {
-
-          let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
-          $('#collection-titles').append(el);
-          
-          console.log("saved collection in user account")
-          console.log(data)
-          $('#collection-submit').prop('disabled', false);
-          $(':button').prop('disabled', false);
-          $('#collection').hide();
-          if (!window.activeCollection){
-            setActiveCollection(collectionTitle);
-            window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
-          }else{
-          window.alert(`Channels from file saved in "${collectionTitle}" collection`)
-          }
-          let title = $('#collection-titles').val();
-          let queryString = jQuery.param(
-            {
-              client_id: window.activeClient.client_id,
-              collection: title,
-              period: 60*60
-            },
-            traditional=true
-          )
-          fetch(`/api/set_chat_update_task?${queryString}`,
-            {
-              method: "PUT",
-              headers: {
-                'Content-Type': 'application/json' 
-              }
-            }).then((response) => response.json())
-            .then((data) => {
-              console.log("Set job to update all channels")
-              console.log(data)
-            })
-        })
-        .catch((err) => {
-
-          $('#collection-submit').prop('disabled', false);
-          $(':button').prop('disabled', false);
-          if ($('#submit-active-collection').find('option').length === 0){
-            $('#submit-active-collection').prop('disabled', true);
-          };
-          window.alert(err)
-          console.log('Error: ', err);
-        });
-    
-    })
-    .catch((err) => {
       $('#collection-submit').prop('disabled', false);
-      if ($('#submit-active-collection').find('option').length === 0){
-        $('#submit-active-collection').prop('disabled', true);
-      };
-      console.log('Error: ', err);
-    });
+      $(':button').prop('disabled', false);
+      $('#collection').hide();
+      if (!window.activeCollection){
+        setActiveCollection(collectionTitle);
+        window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
+      }else{
+      window.alert(`Channels from file saved in "${collectionTitle}" collection`)
+      }
+      
+      }).catch((err) => {
+
+        $('#collection-submit').prop('disabled', false);
+        $(':button').prop('disabled', false);
+        if ($('#submit-active-collection').find('option').length === 0){
+          $('#submit-active-collection').prop('disabled', true);
+        };
+        window.alert(err)
+        console.log('Error: ', err);
+      });
+
+    // fetch(`/api/init_many_channels_to_db`, {
+    //   method: "POST",
+    //   headers: {
+    //     'Content-Type': 'application/json' 
+    //   },
+    //   body: initPayload
+    // }).then(
+    //   (response) => {
+    //     if (response.ok) {
+    //       return response.json()
+    //     }
+    //     throw new Error('Error inserting channels in db. Collection not saved')
+    //     }
+    // ).then((data) => {
+    //   let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
+    //   $('#collection-titles').append(el);
+      
+    //   console.log("saved collection in user account")
+    //   console.log(data)
+    //   $('#collection-submit').prop('disabled', false);
+    //   $(':button').prop('disabled', false);
+    //   $('#collection').hide();
+    //   if (!window.activeCollection){
+    //     setActiveCollection(collectionTitle);
+    //     window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
+    //   }else{
+    //   window.alert(`Channels from file saved in "${collectionTitle}" collection`)
+    //   }
+    // })
+      
+    //   console.log("channels initiated if not already")
+    //   console.log(data)
+    //   fetch(`/api/channel_collection?client_id=${window.activeClient.client_id}`,{
+    //     method: "POST",
+    //     headers: {
+    //       'Content-Type': 'application/json' 
+    //     },
+    //     body: payload
+    //     }).then(
+    //       (response) => {
+    //         if (response.ok) {
+    //           return response.json();
+    //         }
+            
+            
+    //         throw new Error('Collection not added. Possible reasons: client not registered, title already present in your account');
+    //       }
+    //     ).then((data) => {
+
+    //       let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
+    //       $('#collection-titles').append(el);
+          
+    //       console.log("saved collection in user account")
+    //       console.log(data)
+    //       $('#collection-submit').prop('disabled', false);
+    //       $(':button').prop('disabled', false);
+    //       $('#collection').hide();
+    //       if (!window.activeCollection){
+    //         setActiveCollection(collectionTitle);
+    //         window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
+    //       }else{
+    //       window.alert(`Channels from file saved in "${collectionTitle}" collection`)
+    //       }
+    //       let title = $('#collection-titles').val();
+    //       let queryString = jQuery.param(
+    //         {
+    //           client_id: window.activeClient.client_id,
+    //           collection: title,
+    //           period: 60*60
+    //         },
+    //         traditional=true
+    //       )
+    //       fetch(`/api/set_chat_update_task?${queryString}`,
+    //         {
+    //           method: "PUT",
+    //           headers: {
+    //             'Content-Type': 'application/json' 
+    //           }
+    //         }).then((response) => response.json())
+    //         .then((data) => {
+    //           console.log("Set job to update all channels")
+    //           console.log(data)
+    //         })
+    //     })
+    //     .catch((err) => {
+
+    //       $('#collection-submit').prop('disabled', false);
+    //       $(':button').prop('disabled', false);
+    //       if ($('#submit-active-collection').find('option').length === 0){
+    //         $('#submit-active-collection').prop('disabled', true);
+    //       };
+    //       window.alert(err)
+    //       console.log('Error: ', err);
+    //     });
+    
+    // })
+    // .catch((err) => {
+    //   $('#collection-submit').prop('disabled', false);
+    //   if ($('#submit-active-collection').find('option').length === 0){
+    //     $('#submit-active-collection').prop('disabled', true);
+    //   };
+    //   console.log('Error: ', err);
+    // });
   } catch (error) {
     window.alert(error);
     $('#collection-submit').prop('disabled', false);
@@ -406,7 +470,7 @@ async function getJobs(){
 
 
 async function showActiveCollection(){
-  fetch(`/api/active_collection_of_user`, {
+  fetch(`/api/v1/collections/active`, {
     method: "GET",
     headers: {
       'Content-Type': 'application/json' 
@@ -421,7 +485,7 @@ async function showActiveCollection(){
 )};
 
 async function setActiveCollection(title){
-  fetch(`/api/set_active_collection_of_user?collection_title=${title}`, 
+  fetch(`/api/v1/collections/set_active?collection_title=${title}`, 
     {
       method: 'POST',
       headers: {
@@ -437,7 +501,7 @@ async function setActiveCollection(title){
 
 async function deleteCollection(title){
 
-  fetch(`/api/channel_collection?collection_title=${title}`,
+  fetch(`/api/v1/collections/item/${title}`,
     {
       method: 'DELETE',
       headers: {
@@ -484,8 +548,8 @@ $('#collection-titles').on('click change', function(){
 
 
 async function showCollectionInTable(collectionTitle){
-  console.log(collectionTitle)
-  fetch(`/api/channel_collection_by_title?collection_title=${collectionTitle}`, {
+  fetch(`/api/v1/collections/item/${collectionTitle}`, {
+    method: 'GET',
     headers: {
     'Content-Type': 'application/json' 
     }}
@@ -508,7 +572,8 @@ $(window).on('load', function(){
   $('#collection').hide();
   //getJobs();
 
-  fetch('/api/channel_collections_of_user', {
+  fetch('/api/v1/collections/all', {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json' 
       }
