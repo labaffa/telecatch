@@ -5,15 +5,12 @@ from fastapi_users.authentication import AuthenticationBackend, BearerTransport,
     JWTStrategy, CookieTransport
 from fastapi_users.db import SQLAlchemyUserDatabase
 from teledash.db.db_setup import get_user_db
-from teledash.config import settings, mail_connection_config
+from teledash.config import settings, mail_connection_config, AUTH_EXPIRATION_TIME
 from teledash.db.models import User
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from jose import JWTError, jwt
 import datetime as dt
 from urllib.parse import urljoin
-
-
-AUTH_EXPIRATION_TIME = 3600*24*365
 
 
 class UserManager(UUIDIDMixin, BaseUserManager):

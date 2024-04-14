@@ -41,6 +41,7 @@ API_HASH = os.getenv("API_HASH")
 PHONE = os.getenv("PHONE")
 USERNAME = os.getenv("USERNAME")
 tg_client = TelegramClient(f'{SESSIONS_FOLDER}/{USERNAME}', API_ID, API_HASH)
+AUTH_EXPIRATION_TIME = int(os.getenv("AUTH_EXPIRATION_TIME", 999999999))
 
 
 async def create_client():
