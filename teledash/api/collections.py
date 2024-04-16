@@ -140,9 +140,19 @@ async def add_collection_of_channels_to_user_account_from_file(
     channels = file_parsing["data"]
     
     client_id = await uu.get_active_client(db, user.id)
+    if not client_id:
+        raise fastapi.HTTPException(
+            status_code=400, detail="No Telegram client registered"
+        )
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
-        tg_client = await telegram.get_authenticated_client(db, client_id)
+        try:
+            tg_client = await telegram.get_authenticated_client(db, client_id)
+        except Exception:
+            raise fastapi.HTTPException(
+                status_code=400,
+                detail=f'Authentication problems for client: {client_id}'
+            )
         request.app.state.clients[client_id] = tg_client
     collection_in_db = await uc.get_channel_collection(
         db, user.id, title)
