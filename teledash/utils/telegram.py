@@ -274,6 +274,8 @@ async def client_is_logged_and_usable(client_instance):
 async def get_authenticated_client(
     db: Session, client_id: str
 ):
+    
+    """ TODO: should we use httpexception here???"""
     session_path = Path(config.SESSIONS_FOLDER).joinpath(
         client_id
     )
