@@ -169,11 +169,10 @@ async def insert_channel_common(
     channel.url = channel.url.lower()  # be sure new channels are lower
     db_channel = models.ChannelCommon(**dict(channel))
     stmt = insert(models.ChannelCommon)\
-        .values(db_channel)
-    # db.add(db_channel)
+        .values(**(db_channel.to_dict()))
     await db.execute(stmt)
     await db.commit()
-    await db.refresh(db_channel)
+    # await db.refresh(db_channel)
     return db_channel
 
 
