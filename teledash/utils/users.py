@@ -41,11 +41,7 @@ class UserManager(UUIDIDMixin, BaseUserManager):
             timestamp = dt.datetime.strftime(dt.datetime.utcnow(), '%Y-%m-%dT%H%M%S')
             message = MessageSchema(
                 subject=f"Password recovery - {timestamp}",
-                recipients=[
-                     # "dellarovere.lante@gmail.com",
-                     # "fabrizio.miano@cchellenic.com",
-                     "telecatch.api@gmail.com"
-                     ],
+                recipients=[user.email],
                 body=html,
                 subtype=MessageType.html)
             fm = FastMail(mail_connection_config)
