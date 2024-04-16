@@ -52,7 +52,7 @@ $('.form').find('input, textarea').on('keyup blur focus', function (e) {
     data.forEach((value, key) => object[key] = value)
 
     // send data to the backend route
-    fetch("/signup", {
+    fetch("/api/v1/auth/register", {
       method: "POST",
       body: JSON.stringify(object),
       headers: {'Content-Type': 'application/json'}
@@ -79,10 +79,11 @@ $('.form').find('input, textarea').on('keyup blur focus', function (e) {
     fetch("/api/v1/cookie/login", {
         method: "POST",
         body: data
-      }).then((response) => {
+      }).then(async function (response) {
         const status = document.getElementById("loginStatus");
         if (response.ok != true) {
-          status.innerText = "Error logging in: " + response.json().data.detail;
+          response = await response.json();
+          status.innerText = "Error logging in: " + response.detail;
         } else {
           status.innerText = "Successfully logged in";
           let params = new URLSearchParams(window.location.search);
