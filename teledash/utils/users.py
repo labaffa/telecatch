@@ -58,7 +58,7 @@ async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db
     yield UserManager(user_db)
 
 
-bearer_transport = BearerTransport(tokenUrl="/v1/auth/login")
+bearer_transport = BearerTransport(tokenUrl="/api/v1/auth/login")
 
 # COOKIE AUTH
 cookie_transport = CookieTransport(cookie_max_age=AUTH_EXPIRATION_TIME)
