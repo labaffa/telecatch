@@ -184,19 +184,15 @@ async def upsert_channel_common(
         channel.url = channel_in_db["url"]  # backward compatibility to 'not lower' channels
         stmt = update(models.ChannelCommon)\
             .values(dict(channel))\
-            .where(url=channel.url)
-        # db.query(models.ChannelCommon)\
-        #     .filter_by(url=channel.url)\
-        #     .update(dict(channel))
+            .where(models.ChannelCommon.url == channel.url)
     else:
         channel.url = channel.url.lower()  # new channels are all lowered
         channel_common = models.ChannelCommon(**dict(channel))
         stmt = insert(models.ChannelCommon)\
             .values(channel_common)
-        # db.add(channel_common)
     await db.execute(stmt)
     await db.commit()
-    await db.flush()
+    # await db.flush()
     return dict(channel)
 
 
