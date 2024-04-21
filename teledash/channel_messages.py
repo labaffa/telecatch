@@ -129,7 +129,8 @@ async def search_single_channel_batch(
     start_date: dt.datetime=None, 
     end_date: dt.datetime=None,
     limit: int=100, 
-    offset_id: int=0
+    offset_id: int=0,
+    reverse: bool=False
 ):
     all_messages = []
     batch_messages = []
@@ -139,7 +140,8 @@ async def search_single_channel_batch(
         search=search, 
         limit=None, 
         offset_id=offset_id,
-        offset_date=end_date
+        offset_date=end_date,
+        reverse=reverse
     ):
         
         message_d = message.to_dict()
@@ -209,7 +211,8 @@ async def search_all_channels(
     chat_type: str=None, 
     limit: int=100, 
     offset_channel: int=0, 
-    offset_id: int=0
+    offset_id: int=0,
+    reverse: bool=False
 ):
     if not chat_type:
         chat_type = None
@@ -245,7 +248,8 @@ async def search_all_channels(
                 start_date, 
                 end_date,
                 channel_limit, 
-                offset_id
+                offset_id,
+                reverse
                 )
         except Exception as e:
             print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
@@ -396,7 +400,8 @@ async def download_all_channels_media(
     offset_channel: int=0, 
     offset_id: int=0,
     with_media: bool=True,
-    messages_chunk_size: int=1000
+    messages_chunk_size: int=1000,
+    reverse: bool=False
 ):  
     
     """
@@ -445,7 +450,8 @@ async def download_all_channels_media(
                 search=search, 
                 limit=None, 
                 offset_id=offset_id,
-                offset_date=end_date
+                offset_date=end_date,
+                reverse=reverse
             ):
                 message_d = message.to_dict()
                 if message_d["_"] != "Message":
@@ -500,9 +506,6 @@ async def download_all_channels_media(
                         "filename": f"{chunks_count}.tsv"
                     }
                     messages_chunk = []
-                # record = parse_raw_message(message_d)
-                # record.update(**media_metadata)
-                # yield {"type": "message", "data": record}
         except Exception as e:
             print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
         offset_id = 0

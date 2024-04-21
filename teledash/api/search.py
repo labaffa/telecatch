@@ -27,6 +27,9 @@ from pydantic import AfterValidator
 import zipfile
 
 
+MAX_MSG_CHUNK_SIZE = 1000
+
+
 search_router = APIRouter()
 
 
@@ -72,7 +75,8 @@ async def read_search_channel(
     offset_id: int=0,
     db: Session=Depends(get_async_session),
     user: models.User = Depends(active_user),
-    client_id: str | None=None
+    client_id: str | None=None,
+    reverse: bool = False
 ):
     if limit > 100:
         limit = 100
@@ -115,7 +119,8 @@ async def read_search_channel(
             limit=limit,
             offset_channel=offset_channel,
             offset_id=offset_id,
-            user_id=user.id
+            user_id=user.id,
+            reverse=reverse
         )
         return JSONResponse(content=jsonable_encoder(
             response, custom_encoder={
@@ -143,8 +148,12 @@ async def search_and_export_messages_and_media_to_zip_file(
     db: Session=Depends(get_async_session),
     user: models.User = Depends(active_user),
     client_id = None,
-    with_media: bool=True
+    with_media: bool=True,
+    reverse: bool=False,
+    messages_chunk_size: int=1000
 ):
+    if messages_chunk_size > MAX_MSG_CHUNK_SIZE:
+        messages_chunk_size = MAX_MSG_CHUNK_SIZE
     if collection_title is not None:
         collection_in_db = await uc.get_channel_collection(db, user.id, collection_title)
         if not collection_in_db:
@@ -190,7 +199,9 @@ async def search_and_export_messages_and_media_to_zip_file(
             offset_channel=offset_channel,
             offset_id=offset_id,
             with_media=True,
-            user_id=user.id
+            user_id=user.id,
+            reverse=reverse,
+            messages_chunk_size=messages_chunk_size
         )
         async def _encoded_results():
             tsv_columns = schemas.Message.__fields__.keys()
