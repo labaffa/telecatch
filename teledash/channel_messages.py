@@ -135,12 +135,18 @@ async def search_single_channel_batch(
     all_messages = []
     batch_messages = []
     entity = await util_channels.get_input_entity(client, channel_info)
+    # this is added because telegram api don't seem to work with offset_date and reverse
+    # but it's not optimal at all, when reverse and start_date. we could do:
+    # 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
+    # one message to get the message id, and than pass the min/max_id in actual query
+    offset_date = None if reverse else end_date
+    
     async for message in client.iter_messages(
         entity, 
-        search=search, 
+        search=search,
         limit=None, 
         offset_id=offset_id,
-        offset_date=end_date,
+        offset_date=offset_date,
         reverse=reverse
     ):
         
@@ -148,6 +154,11 @@ async def search_single_channel_batch(
         if message_d["_"] != "Message":
             continue
         if start_date and message_d["date"] < start_date.replace(tzinfo=pytz.UTC):
+            if reverse:
+                continue
+            else:
+                break
+        if reverse and end_date and message_d["date"] > end_date.replace(tzinfo=pytz.UTC):
             break
         limit -= 1
         if limit < 0:
@@ -444,19 +455,28 @@ async def download_all_channels_media(
                 print("Not able to get and save chat info because of error: " + str(e))
         try:
             entity = await util_channels.get_input_entity(client, channel_info)
-
+            # this is added because telegram api don't seem to work with offset_date and reverse
+            # but it's not optimal at all, when reverse and start_date. we could do:
+            # 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
+            # one message to get the message id, and than pass the min/max_id in actual query
+            offset_date = None if reverse else end_date
             async for message in client.iter_messages(
                 entity, 
                 search=search, 
                 limit=None, 
                 offset_id=offset_id,
-                offset_date=end_date,
+                offset_date=offset_date,
                 reverse=reverse
             ):
                 message_d = message.to_dict()
                 if message_d["_"] != "Message":
                     continue
                 if start_date and message_d["date"] < start_date.replace(tzinfo=pytz.UTC):
+                    if reverse:
+                        continue
+                    else:
+                        break
+                if reverse and end_date and message_d["date"] > end_date.replace(tzinfo=pytz.UTC):
                     break
                 channel_limit -= 1
                 if channel_limit < 0:
