@@ -113,7 +113,7 @@ async def update_chats_metadata(
     client_is_usable = await ut.client_is_logged_and_usable(client)
     if not client_is_usable:
         print(f"[update_chats_metadata: client is not usable")
-        return 
+        return
     for url in channel_urls:
         print(f'Updating: {url}')
         channel = await uc.get_channel_by_url(db, url)  # it should return dict or None
@@ -136,19 +136,22 @@ async def update_chats_metadata(
             "access_hash": channel["access_hash"],
             "url": channel["url"]
         }
-        count = await count_peer_messages(
-            client, input_entity_info
-        )
-        info = await get_channel_or_megagroup(
-            client, input_entity_info
-        )
-        pts_count = info["full_chat"]["participants_count"]
-        # update channel in db. channel["url"] should be ok because they are initiated
-        await uc.update_channel_common(db, channel["url"], {
-            "messages_count": count["msg_count"],
-            "participants_count": pts_count, 
-            "updated_at": dt.datetime.utcnow()
-        })
+        try:
+            count = await count_peer_messages(
+                client, input_entity_info
+            )
+            info = await get_channel_or_megagroup(
+                client, input_entity_info
+            )
+            pts_count = info["full_chat"]["participants_count"]
+            # update channel in db. channel["url"] should be ok because they are initiated
+            await uc.update_channel_common(db, channel["url"], {
+                "messages_count": count["msg_count"],
+                "participants_count": pts_count, 
+                "updated_at": dt.datetime.utcnow()
+            })
+        except Exception as e:
+            print(f"Unable to update channel {url} due to: {str(e)}")
         await asyncio.sleep(sleep_per_request)
 
     
