@@ -71,6 +71,7 @@ async def file_to_list_of_channel_creators(input_file: fastapi.UploadFile):
 
 async def add_collection(db: Session, user: models.User, channels, title):
     for channel in channels:
+        channel["channel_url"] = channel["channel_url"].strip().lower()
         channel_url = channel["channel_url"]
         channel_common_in_db = await uc.get_channel_by_url(
             db, channel_url
@@ -299,7 +300,7 @@ async def update_metadata_of_collections_channel(
     stmt = sa.select(
         models.ChannelCommon.url)\
         .where(models.ChannelCommon.url.in_(channel_urls))\
-        .order_by(models.ChannelCommon.updated_at.desc())
+        .order_by(models.ChannelCommon.updated_at.asc())
     stmt_result = await db.execute(stmt)
     await db.commit()
     sorted_channel_urls = [r[0] for r in stmt_result.fetchall()]
