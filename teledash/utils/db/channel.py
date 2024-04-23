@@ -368,6 +368,7 @@ async def get_channel_collection(
     query = select(
         models.ChannelCollection.channel_url,
         models.ChannelCommon.url,
+        models.ChannelCommon.id,
         models.ChannelCommon.title,
         models.ChannelCommon.username,
         models.ChannelCommon.type,
