@@ -61,7 +61,9 @@ async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db
 bearer_transport = BearerTransport(tokenUrl="/api/v1/auth/login")
 
 # COOKIE AUTH
-cookie_transport = CookieTransport(cookie_max_age=AUTH_EXPIRATION_TIME)
+cookie_transport = CookieTransport(
+     cookie_max_age=AUTH_EXPIRATION_TIME, cookie_secure=False
+)
 
 
 def get_jwt_strategy():
