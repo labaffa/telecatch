@@ -324,14 +324,28 @@ async def search_all_channels_generator(
     limit: int=100, 
     offset_channel: int=0, 
     offset_id: int=0,
+    reverse: bool=False
 ):  
     if not chat_type:
         chat_type = None
     if limit < 0:
         limit = None
+    channel_urls = [x.strip().lower() for x in channel_urls]
     all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
+    all_channels = sorted(
+        all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
+    )
+    total_msg_count = 0
+    channel_limit = limit
+    batch_messages = []
+    # this is added because telegram api don't seem to work with offset_date and reverse
+    # but it's not optimal at all, when reverse and start_date. we could do:
+    # 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
+    # one message to get the message id, and than pass the min/max_id in actual query
+    offset_date = None if reverse else end_date
     for channel_info in all_channels[offset_channel:]:
-        channel_info = dict(channel_info )
+        channel_info = dict(channel_info)
+
         if (chat_type is not None) and (channel_info["type"] != chat_type):
             continue
         if not channel_info["id"]:
@@ -347,20 +361,30 @@ async def search_all_channels_generator(
                 print("Not able to get and save chat info because of error: " + str(e))
         try:
 
-            batch_messages = []
+            
             entity = await util_channels.get_input_entity(client, channel_info)
             async for message in client.iter_messages(
                 entity, 
                 search=search, 
-                limit=limit, 
+                limit=None,  # we use channel_limit counter 
                 offset_id=offset_id,
-                offset_date=end_date
+                offset_date=offset_date,
+                reverse=reverse
             ):
                 message_d = message.to_dict()
                 if message_d["_"] != "Message":
                     continue
                 if start_date and message_d["date"] < start_date.replace(tzinfo=pytz.UTC):
+                    if reverse:
+                        continue
+                    else:
+                        break
+                if reverse and end_date and message_d["date"] > end_date.replace(tzinfo=pytz.UTC):
                     break
+                if channel_limit is not None:
+                    channel_limit -= 1
+                    if channel_limit <= 0:
+                        break
                 message_d["peer_id"]["channel_url"] = channel_info["url"]
                 message_d["chat_type"] = channel_info["type"]
                 message_d["country"] = channel_info.get("location")
@@ -390,16 +414,27 @@ async def search_all_channels_generator(
                     batch_messages = []
                     for msg in enriched_messages:
                         yield msg
-            # enrich and yield remaining messages
-            print("Enriching remaining messages")
-            enriched_messages = await enrich_and_parse_messages(
-                db, client, entity, batch_messages
-            )
-            for msg in enriched_messages:
-                yield msg
+            # # enrich and yield remaining messages
+            # print("Enriching remaining messages")
+            # enriched_messages = await enrich_and_parse_messages(
+            #     db, client, entity, batch_messages
+            # )
+            # for msg in enriched_messages:
+            #     yield msg
         except Exception as e:
             print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
-            
+        offset_id = 0
+        if (limit is not None):
+            channel_limit = limit - total_msg_count
+            if (total_msg_count >= limit):
+                break
+    print("Enriching remaining messages")
+    enriched_messages = await enrich_and_parse_messages(
+        db, client, entity, batch_messages
+    )
+    for msg in enriched_messages:
+        yield msg
+
 
 async def download_all_channels_media(
     db: Session,
