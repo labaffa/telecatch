@@ -232,8 +232,13 @@ async def search_all_channels(
     all_msg = []
     total_msg_count = 0
     channel_limit = limit
-    channel_urls = [x.strip() for x in channel_urls]
+    channel_urls = [x.strip().lower() for x in channel_urls]
     all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
+    # the order of the channels in all_channels is different from channel_urls, because
+    # if follows positions on the sql db. we recalculate now the correct index, but
+    # I believe that TODO: we should fix it by keeping the same order as channel_urls
+    all_channels_urls = [x["url"] for x in all_channels]
+    offset_channel = all_channels_urls.index(channel_urls[offset_channel])
     for channel_info in all_channels[offset_channel:]:
         channel_info = dict(channel_info)
         if (chat_type is not None) and (channel_info["type"] != chat_type):
@@ -433,6 +438,11 @@ async def download_all_channels_media(
         limit = None
 
     all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
+    # the order of the channels in all_channels is different from channel_urls, because
+    # if follows positions on the sql db. we recalculate now the correct index, but
+    # I believe that TODO: we should fix it by keeping the same order as channel_urls
+    all_channels_urls = [x["url"] for x in all_channels]
+    offset_channel = all_channels_urls.index(channel_urls[offset_channel])
     total_msg_count = 0
     channel_limit = limit
     messages_chunk = []
@@ -463,7 +473,7 @@ async def download_all_channels_media(
             async for message in client.iter_messages(
                 entity, 
                 search=search, 
-                limit=None, 
+                limit=channel_limit, 
                 offset_id=offset_id,
                 offset_date=offset_date,
                 reverse=reverse
@@ -478,9 +488,10 @@ async def download_all_channels_media(
                         break
                 if reverse and end_date and message_d["date"] > end_date.replace(tzinfo=pytz.UTC):
                     break
-                channel_limit -= 1
-                if channel_limit < 0:
-                    break
+                if channel_limit is not None:
+                    channel_limit -= 1
+                    if channel_limit <= 0:
+                        break
                 message_d["peer_id"]["channel_url"] = channel_info["url"]
                 message_d["chat_type"] = channel_info["type"]
                 message_d["country"] = channel_info.get("location")
