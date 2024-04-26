@@ -215,8 +215,8 @@ async def search_all_channels(
     db: Session,
     client, 
     search,
-    channel_urls, 
-    user_id: int,
+    channel_urls,
+    user_id, 
     start_date: dt.datetime=None, 
     end_date: dt.datetime=None,
     chat_type: str=None, 
@@ -234,11 +234,9 @@ async def search_all_channels(
     channel_limit = limit
     channel_urls = [x.strip().lower() for x in channel_urls]
     all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
-    # the order of the channels in all_channels is different from channel_urls, because
-    # if follows positions on the sql db. we recalculate now the correct index, but
-    # I believe that TODO: we should fix it by keeping the same order as channel_urls
-    all_channels_urls = [x["url"] for x in all_channels]
-    offset_channel = all_channels_urls.index(channel_urls[offset_channel])
+    all_channels = sorted(
+        all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
+    )
     for channel_info in all_channels[offset_channel:]:
         channel_info = dict(channel_info)
         if (chat_type is not None) and (channel_info["type"] != chat_type):
