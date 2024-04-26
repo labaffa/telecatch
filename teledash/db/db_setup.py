@@ -25,9 +25,9 @@ SessionLocal = sessionmaker(
 a_engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
     future=True,
-    connect_args={"check_same_thread": False},
+    connect_args={"check_same_thread": False},  # check_same_thread is related to sqlite
     pool_pre_ping=True
-    )
+)
 async_session_maker = async_sessionmaker(
     a_engine, expire_on_commit=False, autocommit=False, autoflush=False, 
     class_=AsyncSession
