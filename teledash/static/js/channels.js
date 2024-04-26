@@ -550,7 +550,7 @@ $('#delete-collection').click(function(){
 
 $('#collection-titles').on('click change', function(){
   let title = $('#collection-titles').find(":selected").val();
-  console.log(title)
+
   showCollectionInTable(title);
 })
 
@@ -568,6 +568,7 @@ async function showCollectionInTable(collectionTitle){
         let { channel_url, ...clean } = o;
         return clean;
       })
+      window.dataTable = cleanData;
       console.log(cleanData, collectionTitle)
       showChannels(cleanData, collectionTitle);
     })
@@ -617,6 +618,48 @@ $(window).on('load', function(){
 
     
 });
+
+function exportDataTableToTSV(){
+
+  if (!window.dataTable){
+    return
+  }
+  let header = Object.keys(window.dataTable[0]);
+  let tsv = "";
+  tsv += header.join("\t") + "\n";
+  window.dataTable.forEach(function(item){
+    let row = header.map(function(col){
+      return item[col];
+    }).join("\t");
+    tsv += row + "\n";
+  })
+  // Crea un oggetto Blob per il contenuto TSV
+  var blob = new Blob([tsv], { type: "text/tab-separated-values" });
+
+  // Crea un URL per il Blob
+  var url = window.URL.createObjectURL(blob);
+
+  // Crea un elemento <a> per il download del file
+  var a = document.createElement("a");
+  a.href = url;
+
+  // create filename
+  let title = $('#collection-titles').val();
+  let fname = "collection_export.tsv"
+  if (title) {
+    fname = `${title}.tsv`  
+  } 
+  
+
+  a.download = fname;
+
+  // Simula un clic sull'elemento <a> per avviare il download
+  a.click();
+
+  // Rilascia l'URL dell'oggetto Blob
+  window.URL.revokeObjectURL(url);
+}
+
 
 
 function exportTableToTSV() {
