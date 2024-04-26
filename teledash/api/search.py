@@ -43,7 +43,7 @@ def validate_format(v):
     if not v:
         v = "tsv"  # default
     v = v.strip().lower()
-    valid_formats = ["json", "tsv"]
+    valid_formats = ["json", "tsv", "zip"]
     if v not in valid_formats:
         raise ValueError(f"{v} format is not supported.")
     return v
