@@ -493,8 +493,16 @@ async function setActiveCollection(title){
       }
     }
   ).then((response) =>{
-    
     showActiveCollection();
+    // update metadata of the active collection
+    fetch(`/api/v1/collections/item/${title}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json' 
+        }
+      }
+    )
     
   })
 }
