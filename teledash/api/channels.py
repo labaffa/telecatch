@@ -46,7 +46,6 @@ async def read_get_channel(
 @channel_router.get("/channels_info")
 async def info_of_channels_and_groups(
     db: Session = Depends(get_async_session),
-    is_joined: Union[bool, None]=None,
     channel_urls: List[str]=Query(default=[]),
     user: db_models.User = Depends(active_user)
 ):
