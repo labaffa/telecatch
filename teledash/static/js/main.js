@@ -211,7 +211,7 @@ function callAPI(
     }
 
     if (pageNumber == totalPages && window.messagesDone == false){
-        let offset_channel = window.allChannels.indexOf(
+        let offset_channel = window.urlsToSearch.indexOf(
             window.tableMessages.slice(-1)[0].username
         );
         let offset_id = window.tableMessages.slice(-1)[0].id;
@@ -322,11 +322,11 @@ async function export_search(){
     out_format: window.export_format,
     client_id: window.activeClient.client_id,
     channel_urls: window.urlsToSearch,
-    media: window.media
+    with_media: window.media
   },
   traditional=true 
   );
-  var url = new URL('/api/stream_search_with_media', window.location.origin);
+  var url = new URL('/api/v1/export_search', window.location.origin);
   //url.search = new URLSearchParams(params).toString();
   url.search = queryString;
   window.open(url, "_blank");
@@ -357,7 +357,6 @@ $('#export-messages').click(function(e){
   };
   var url = new URL('/api/v1/export_search', window.location.origin);
   url.search = new URLSearchParams(params).toString();
-  console.log("prima")
   fetch(url, {
     headers: {
       'Content-Type': 'application/json',
@@ -365,7 +364,6 @@ $('#export-messages').click(function(e){
     'Connection': 'keep-alive'
     }
   })
-  console.log("Fatto")
   // .then(res => {
   //   const disposition = res.headers.get('Content-Disposition');
   //   filename = disposition.split(/;(.+)/)[1].split(/=(.+)/)[1];
