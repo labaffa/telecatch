@@ -6,18 +6,17 @@ from telethon.tl.functions.messages import (
 from telethon.tl.types import (
     PeerChannel, InputMessagesFilterEmpty
 )
-import os
-from teledash import config, schemas
 from tinydb import Query
+from teledash import config, schemas
 import datetime as dt
 import pytz
 import asyncio
-from typing import Union
 from teledash.utils.db import channel as uc
 from sqlalchemy.orm import Session
 from teledash.utils import telegram as ut
 from teledash.utils import channels as util_channels
 from typing import Iterable
+from async_timeout import timeout
 
 
 Channel = Query()
@@ -505,7 +504,7 @@ async def download_all_channels_media(
             async for message in client.iter_messages(
                 entity, 
                 search=search, 
-                limit=channel_limit, 
+                limit=None,  # I dont remember why, but we use counter channel_limit
                 offset_id=offset_id,
                 offset_date=offset_date,
                 reverse=reverse
@@ -538,13 +537,15 @@ async def download_all_channels_media(
                             fname = f'{message_d["date"].strftime("%Y-%m")}/{message_d["peer_id"]["channel_id"]}_{message_d["id"]}.png'
                             media_metadata["media_filename"] = fname
                             print(f"[search_single_batch]: downloading {media_metadata['media_type']} media of {channel_info['url']}: {message_d['id']}")
-                            await message.download_media(media_buffer)
+                            async with timeout(5):
+                                await message.download_media(media_buffer)
                             yield {
                                 "type": "media", 
                                 "data": media_buffer.getvalue(), 
                                 "filename": media_metadata["media_filename"]
                             }
-                        except Exception:
+                        except Exception as e:
+                            print(e)
                             media_metadata["media_filename"] = None
                 message_d["author"] = get_author(message_d)
                 if message_d["fwd_from"]:

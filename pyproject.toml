@@ -32,6 +32,7 @@ pydantic = "^2.6.4"
 fastapi-mail = "^1.4.1"
 pydantic-settings = "^2.2.1"
 requests = "^2.31.0"
+async-timeout = "^4.0.3"
 
 
 [build-system]
