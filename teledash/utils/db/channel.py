@@ -80,7 +80,7 @@ async def get_channels_from_list_of_urls(
         )\
         .join(
             models.ChannelCustom,
-            models.ChannelCommon.url == models.ChannelCustom.channel_url
+            func.lower(models.ChannelCommon.url) == func.lower(models.ChannelCustom.channel_url)
         )\
         .where(*filters)
     result = await db.execute(query)
