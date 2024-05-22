@@ -35,7 +35,7 @@ def upgrade() -> None:
               batch_op.add_column(sa.Column('is_active', sa.Boolean(), nullable=True))
               batch_op.add_column(sa.Column('is_superuser', sa.Boolean(), nullable=True))
               batch_op.add_column(sa.Column('is_verified', sa.Boolean(), nullable=True))
-              if len(non_uuid_ids) > 0:
+              if (len(non_uuid_ids) > 0) or (not results):
                      batch_op.alter_column('id',
                             existing_type=sa.INTEGER(),
                             type_=fastapi_users_db_sqlalchemy.generics.GUID(),
