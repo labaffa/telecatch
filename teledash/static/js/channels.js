@@ -333,7 +333,7 @@ $('#collection-submit').click(function(ev){
 
         $('#collection-submit').prop('disabled', false);
         $(':button').prop('disabled', false);
-        if ($('#submit-active-collection').find('option').length === 0){
+        if ($('#collection-titles').find('option').length === 0){
           $('#submit-active-collection').prop('disabled', true);
         };
         window.alert(err)
@@ -447,7 +447,7 @@ $('#collection-submit').click(function(ev){
     window.alert(error);
     $('#collection-submit').prop('disabled', false);
     $(':button').prop('disabled', false);
-    if ($('#submit-active-collection').find('option').length === 0){
+    if ($('#collection-titles').find('option').length === 0){
       $('#submit-active-collection').prop('disabled', true);
     };
     console.log("Error: ", error)
@@ -556,6 +556,7 @@ $('#collection-titles').on('click change', function(){
 
 
 async function showCollectionInTable(collectionTitle){
+  console.log(collectionTitle)
   fetch(`/api/v1/collections/item/${collectionTitle}`, {
     method: 'GET',
     headers: {
@@ -595,8 +596,9 @@ $(window).on('load', function(){
         $('#submit-active-collection').prop('disabled', true);
       }
       data.data.forEach((d) => {
+
         let sel = (d == window.activeCollection) ? 'selected' : '';      
-        let el = `<option value=${d} ${sel}>` + d + '</option>';
+        let el = `<option value="${d}" ${sel}>` + d + '</option>';
         $('#collection-titles').append(el);
         
       })
