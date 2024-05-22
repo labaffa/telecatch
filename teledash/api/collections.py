@@ -104,6 +104,8 @@ async def add_collection_of_channels_to_user_account(
 ):  
     title = collection_body.title
     channels = [dict(c) for c in collection_body.channels]
+    # remove duplicates 
+    channels = list({x["channel_url"].strip().lower(): x for x in channels}.values())
     client_id = await uu.get_active_client(db, user.id)
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
