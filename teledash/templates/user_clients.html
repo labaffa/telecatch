@@ -15,7 +15,7 @@
         <style>
             body {
                 min-height: 100vh;
-                min-height: -webkit-fill-available;
+                /* min-height: -webkit-fill-available; */
                 margin: 0;
             }
         </style>
@@ -23,7 +23,7 @@
 
 <body class="d-flex flex-column">
     {% include "explorer/navbar.html" %}
-    <div class="d-flex justify-content-center m-5">
+    <div class="d-flex flex-fill justify-content-center m-5 h-100">
         <div id="clients-list" class="container bordered padded">
             <h5>List of registered phone numbers</h5>
             <ul>
@@ -33,6 +33,7 @@
             </ul>
         </div>
         <div id="client-form-container" class="container bordered padded">
+            
             <form id="clientForm" >
                 <h5>Register Telegram Account</h5>
                 <p id="clientStatus"></p>
