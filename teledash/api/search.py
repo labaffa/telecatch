@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from teledash.channel_messages import search_all_channels, \
-    search_all_channels_generator, download_all_channels_media
+    search_all_channels_generator, download_all_channels_media, sample_from_all_channels
 import base64
 from typing import Union
 from teledash import schemas as schemas
@@ -278,3 +278,75 @@ async def search_and_export_messages_and_media_to_zip_file(
             media_type='application/octet-stream',
             headers=headers
         )
+
+
+@search_router.get("/sample")
+async def read_sample_from_channelsl(
+    request: fastapi.Request,
+    search: str | None,
+    collection_title: str = None,
+    channel_urls: List[str]=Query(default=[]),
+    start_date: StrictDate=None,
+    end_date: StrictDate=None,
+    chat_type: Union[str, None]=None,
+    limit: int=100, 
+    offset_channel: int=0, 
+    offset_id: int=0,
+    db: Session=Depends(get_async_session),
+    user: models.User = Depends(active_user),
+    client_id: str | None=None,
+    reverse: bool = False
+):
+    if limit > 100:
+        limit = 100
+    # collection_title overrides channel_urls
+    if collection_title is not None:
+        collection_in_db = await uc.get_channel_collection(db, user.id, collection_title)
+        if not collection_in_db:
+            raise fastapi.HTTPException(
+                status_code=400, 
+                detail=(f"'{collection_title}' collection not present in user account. "
+                        "Create it or chose another collection"
+                )
+            )
+        channel_urls = [x["channel_url"] for x in collection_in_db]
+    if not client_id:
+        client_id = await uu.get_active_client(db, user.id)
+    if client_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User {user.username} has not registered Telegram clients"
+        )
+    tg_client = request.app.state.clients.get(client_id)
+    if tg_client is None:  # I believe we should test if tg_client works 
+        tg_client = await telegram.get_authenticated_client(db, client_id)
+        request.app.state.clients[client_id] = tg_client
+    if not channel_urls:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Please set channels to search, set or create a collection"
+        )
+    try:
+        response = await sample_from_all_channels(
+            db=db,
+            client=tg_client, 
+            search=search,
+            channel_urls=channel_urls,
+            start_date=start_date,
+            end_date=end_date,
+            chat_type=chat_type,
+            limit=limit,
+            offset_channel=offset_channel,
+            offset_id=offset_id,
+            user_id=user.id,
+            reverse=reverse
+        )
+        return JSONResponse(content=jsonable_encoder(
+            response, custom_encoder={
+            bytes: lambda v: base64.b64encode(v).decode('utf-8')})
+        )
+    except Exception as e:
+        raise
+        raise HTTPException(
+            status_code=400, detail=str(e)
+        )    
