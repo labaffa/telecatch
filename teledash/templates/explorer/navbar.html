@@ -1,42 +1,59 @@
 <nav>
-    <ul class="left">
-        <li><a href="/">Home</a></li>
-        
-        <!-- <li>
-            List of available clients: {{clients}}
-        </li> -->
-        <li>
-            <!-- {% if clients %}
-                Using phone: {{clients[0].phone}}
-            {% else %}
-                Using phone: 
-            {% endif %} -->
-            <a href="/clients"> Client Phone [<span id="nav-active-client">{{active_client.phone}}</span>]</a>
-        </li>
-        <li>
-            <!-- List of available collections: 
-            {% for coll in collections %}
-                {{coll}}
-                {% if coll == active_collection %}
-                [active]
-                {% endif %}
-            {% endfor %} -->
-            <a href="/channels"> Active Collection [<span id="nav-active-collection">{{active_collection}}</span>]</a>
-        </li>
-    </ul>
-    <ul  class="right">
-        <li>
-            Logged in as {{user.username}} (
-            <button id="logout"></button>
-            <a href="javascript:logOut()">logout</a> )
-        </li>
-    </ul>
-    <script language="javascript"> 
+    <div class="menu d-flex justify-content-between">
 
-        function logOut(){
-            fetch(`/api/v1/cookie/logout`, 
-               { 
-                method: 'POST',
+    
+        <div class="left-side">
+
+            
+            <ul class="left">
+                <li><a href="/">Home</a></li>
+                
+                <!-- <li>
+                    List of available clients: {{clients}}
+                </li> -->
+                <li>
+                <!-- {% if clients %}
+                    Using phone: {{clients[0].phone}}
+                    {% else %}
+                    Using phone: 
+                    {% endif %} -->
+                    <a href="/clients"> Client Phone [<span id="nav-active-client">{{active_client.phone}}</span>]</a>
+                </li>
+                <li>
+                    <!-- List of available collections: 
+                        {% for coll in collections %}
+                        {{coll}}
+                        {% if coll == active_collection %}
+                        [active]
+                        {% endif %}
+                        {% endfor %} -->
+                        <a href="/channels"> Active Collection [<span id="nav-active-collection">{{active_collection}}</span>]</a>
+                    </li>
+                </ul>
+        </div>
+        
+        <div class="right-side">
+
+            <ul  class="right">
+                <li>
+                    Logged in as {{user.username}} (
+                        <button id="logout"></button>
+                        <a href="javascript:logOut()">logout</a> )
+                    </li>
+                </ul>
+        </div>
+    </div>
+    <div class="app-logo d-flex justify-content-center align-items-center">
+        <a href="/">
+            <img src="/static/img/logo/logo_transparent.png" alt="logo" class="logo" />
+        </a>
+    </div>
+            <script language="javascript"> 
+
+function logOut(){
+    fetch(`/api/v1/cookie/logout`, 
+    { 
+        method: 'POST',
                 headers: {'Content-Type': 'application/json'}
                 }
             ).then((response) => {
