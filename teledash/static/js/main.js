@@ -72,10 +72,11 @@ $('#submitButton').on("click", async function() {
     let selectedUrls = $('#channels').val();
     window.urlsToSearch = selectedUrls.length == 0 ? window.channelUrls : selectedUrls
     if (!window.data_range){
+      let endPoint = Object.is(window.data_range, -0) ? '/api/v1/sample' : '/api/v1/search';
       callAPI(search, window.limit, 0, 0, 
         window.start_date, window.end_date, 
         window.chat_type, window.country, window.activeClient.client_id, 
-        window.urlsToSearch
+        window.urlsToSearch, endPoint
         );
     } else {
       await export_search();
@@ -103,7 +104,8 @@ function callAPI(
   chat_type,
   country, 
   client_id,
-  channel_urls
+  channel_urls,
+  endpoint="/api/v1/search"
   ) {
   emptyTableHeight = 30*rowsPerPage;
   resultTableBody.innerHTML = `<div class="container" style="height: ${emptyTableHeight}px;>
@@ -126,7 +128,7 @@ function callAPI(
     traditional=true
   );
   fetch(
-    `/api/v1/search?${queryString}`,
+    `${endpoint}?${queryString}`,
     {
         headers: {
           'Cache-Control': 'no-cache'
@@ -196,21 +198,24 @@ function callAPI(
     //let totalRows = $(tableSelector + ' tbody tr').length;
     let totalRows = window.tableMessages.length;
     let totalPages = Math.ceil(totalRows / rowsPerPage);
-
+    $('#page-first').hide();
     $('#page-dw').hide();
     $('#page-up').hide();
+    $('#page-last').hide();
     $('#page-number').html(pageNumber);
     // Aggiungi il pulsante "Pagina precedente" se non è la prima pagina
     if (pageNumber > 1) {
+      $('#page-first').show();
       $('#page-dw').show();
     } 
 
     // Aggiungi il pulsante "Pagina successiva" se non è l'ultima pagina
     if (pageNumber < totalPages) {
       $('#page-up').show();
+      $('#page-last').show();
     }
 
-    if (pageNumber == totalPages && window.messagesDone == false){
+    if (pageNumber == totalPages && window.messagesDone == false && (Object.is(window.data_range, 0))){
         let offset_channel = window.urlsToSearch.indexOf(
             window.tableMessages.slice(-1)[0].username
         );
@@ -254,6 +259,22 @@ $('#page-dw').click(function(e) {
     generatePagination(tableSelector, paginationSelector, page - 1, rowsPerPage);
   });
 
+$('#page-first').click(function(e) {
+    e.preventDefault();
+    let page = parseInt($('#results-table').attr('data-page'));
+    $('#results-table').attr('data-page', 1);
+    showRows(1, tableSelector, rowsPerPage);
+    generatePagination(tableSelector, paginationSelector, 1, rowsPerPage);
+});
+$('#page-last').click(function(e) {
+  e.preventDefault();
+  let totalRows = window.tableMessages.length;
+  let totalPages = Math.ceil(totalRows / rowsPerPage);
+  let page = parseInt($('#results-table').attr('data-page'));
+  $('#results-table').attr('data-page', totalPages);
+  showRows(totalPages, tableSelector, rowsPerPage);
+  generatePagination(tableSelector, paginationSelector, totalPages, rowsPerPage);
+});
 
   function createEmptyTable(rows) {
   
@@ -673,6 +694,7 @@ function createHistogramFromMessages(data) {
     dates.push(parseTime(obj.timestamp));
   } 
   let domain = d3.extent(dates); 
+  
   let formatDate = d3.timeFormat("%Y-%m-%d");
   
   let x = d3.scaleTime().domain(domain).range([0, width]);  
@@ -681,7 +703,7 @@ function createHistogramFromMessages(data) {
   
   svg.append("g")
     .attr("transform", "translate(0," + height + ")")
-    .call(xAxis.ticks(d3.timeYear));
+    .call(xAxis.ticks(d3.timeDay));
   
     
   // set the parameters for the histogram
