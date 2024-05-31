@@ -17,6 +17,7 @@ from teledash.utils import telegram as ut
 from teledash.utils import channels as util_channels
 from typing import Iterable
 from async_timeout import timeout
+import math
 
 
 Channel = Query()
@@ -186,12 +187,14 @@ async def search_single_channel_batch(
             batch_records = await enrich_and_parse_messages(
                 db, client, entity, batch_messages
             )
+            
             all_messages.extend(batch_records)
             batch_messages = []
     print("Enriching remaining messages")
     batch_records = await enrich_and_parse_messages(
         db, client, entity, batch_messages
     )
+    
     all_messages.extend(batch_records)
     return all_messages
 
@@ -250,6 +253,7 @@ async def search_all_channels(
                 print('Inserting entity info and metadata in db')
                 await uc.upsert_channel_common(db, schemas.ChannelCommon(**channel_info))
             except Exception as e:
+                # IMPORTANT: should we skip here?
                 print("Not able to get and save chat info because of error: " + str(e))
         try: 
             print("[search_all_channels]: ", channel_info)
@@ -867,7 +871,157 @@ def enrich_messages_with_entities(messages, entities):
     return enriched_messages
 
 
+async def search_single_channel_batch_trycatch(
+    db: Session,
+    client, 
+    channel_info: dict, 
+    search, 
+    start_date: dt.datetime=None, 
+    end_date: dt.datetime=None,
+    limit: int=100, 
+    offset_id: int=0,
+    reverse: bool=False
+):
+    try:
+        all_messages = []
+        batch_messages = []
+        try:
+            entity = await util_channels.get_input_entity(client, channel_info)
+        except Exception as e:
+            print(f'{channel_info["url"]} might be not present on Telegram anymore. Skipping')
+            return []
+        # this is added because telegram api don't seem to work with offset_date and reverse
+        # but it's not optimal at all, when reverse and start_date. we could do:
+        # 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
+        # one message to get the message id, and than pass the min/max_id in actual query
+        offset_date = None if reverse else end_date
+        
+        async for message in client.iter_messages(
+            entity, 
+            search=search,
+            limit=None, 
+            offset_id=offset_id,
+            offset_date=offset_date,
+            reverse=reverse
+        ):
+            
+            message_d = message.to_dict()
+            if message_d["_"] != "Message":
+                continue
+            if start_date and message_d["date"] < start_date.replace(tzinfo=pytz.UTC):
+                if reverse:
+                    continue
+                else:
+                    break
+            if reverse and end_date and message_d["date"] > end_date.replace(tzinfo=pytz.UTC):
+                break
+            limit -= 1
+            if limit < 0:
+                break
+            
+            message_d["peer_id"]["channel_url"] = channel_info["url"]
+            message_d["chat_type"] = channel_info["type"]
+            message_d["country"] = channel_info.get("country")
+            message_d["category"] = channel_info.get("category")
+            message_d["language"] = channel_info.get("language")
+            message_d["author"] = get_author(message_d)
+            if message_d["author"]["author_type"] is None:  # message not valid
+                print("Unable to get author, message might be broken. Skipping: ")
+                print(message_d)
+                continue
+            if message_d["fwd_from"]:
+                fwd_author = get_author(message_d["fwd_from"])
+                if fwd_author["author_type"] is None:
+                    print("FORWARDED MESSAGE MISSING AUTHOR:")
+                    print(message_d)
+                    fwd_author["author_id"] = 0
+                message_d["fwd_from_author"] = fwd_author
+            batch_messages.append(message_d)
+            if len(batch_messages) >= 200:
+                # print("Enriching")
+                # batch_records = await enrich_and_parse_messages(
+                #     db, client, entity, batch_messages
+                # )
+                batch_records = [parse_raw_message(m) for m in batch_messages]
+                all_messages.extend(batch_records)
+                batch_messages = []
+        # print("Enriching remaining messages")
+        # batch_records = await enrich_and_parse_messages(
+        #     db, client, entity, batch_messages
+        # )
+        batch_records = [parse_raw_message(m) for m in batch_messages]
+        all_messages.extend(batch_records)
+    except Exception as e:
+        print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
+        all_messages = []
+    return all_messages
+
+
+async def sample_from_all_channels(
+    db: Session,
+    client, 
+    search,
+    channel_urls,
+    user_id, 
+    start_date: dt.datetime=None, 
+    end_date: dt.datetime=None,
+    chat_type: str=None, 
+    limit: int=100, 
+    offset_channel: int=0, 
+    offset_id: int=0,
+    reverse: bool=False
+):
+    
+    if not chat_type:
+        chat_type = None
+    if limit < 0:
+        return []
+    if limit > 200:
+        limit = 200
+    all_msg = []
+    total_msg_count = 0
+    channel_urls = [x.strip().lower() for x in channel_urls]
+    all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
+    all_channels = sorted(
+        all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
+    )
     
 
-
-
+    channel_limit = math.ceil(limit/len(channel_urls))
+    coros = []
+    for channel_info in all_channels[offset_channel:]:
+        
+        channel_info = dict(channel_info)
+        if (chat_type is not None) and (channel_info["type"] != chat_type):
+            continue
+        if not channel_info["id"]:
+            print(f'{channel_info["url"]} has not id and access_hash yet. Retrieving entity info from Telegram')
+            try:
+                common_channel_info = await util_channels.build_chat_info(
+                    client, channel_info["url"]
+                )
+                channel_info.update(**common_channel_info)
+                print('Inserting entity info and metadata in db')
+                await uc.upsert_channel_common(db, schemas.ChannelCommon(**channel_info))
+            except Exception as e:
+                print("Not able to get and save chat info because of error: " + str(e))
+         
+        coros.append(search_single_channel_batch_trycatch(
+            db,
+            client, 
+            channel_info, 
+            search, 
+            start_date, 
+            end_date,
+            channel_limit, 
+            offset_id,
+            reverse
+            ))
+    
+    coros_responses = await asyncio.gather(*coros, return_exceptions=True)
+    all_msg = []
+    for coro in coros_responses:
+        if isinstance(coro, list):
+            all_msg.extend(coro)
+   
+    return sorted(all_msg, key= lambda x: x["timestamp"], reverse=True)
