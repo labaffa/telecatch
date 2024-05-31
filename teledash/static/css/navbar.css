@@ -1,6 +1,8 @@
 nav {
-    min-height: 50px;
+    /* min-height: 50px; */
     padding: 5px;
+    /* display: flex;
+    justify-content: space-between; */
 }
 nav ul {
     list-style-type: none;
@@ -37,3 +39,98 @@ nav a:hover {
     padding: 8px;
     background-color: #dddddd;
   } */
+
+
+  .logo {
+    
+    height: 15rem;
+    
+  }
+  
+  .left-side, .right-side {
+    display: flex;
+  }
+  
+  
+  /* Footer*/
+
+  :root {
+    --sidebar-collapse-width: 40px;
+  }
+  .cg-logo {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 0;
+
+}
+    .cg-logo.focus img {
+        transform: scale(1);
+    }
+    .cg-logo img {
+        max-height: 60px;
+        width: 100%;
+
+    }
+
+/* .cgiar-logos{
+    padding-top: 6px;
+    padding-bottom: 6px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 36px;
+    
+} */
+
+.logos .row{
+    gap: 22px;
+}
+
+.cgiar-logos {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 36px;
+}
+    .cgiar-logos img {
+        height: 60px;
+        overflow-clip-margin: content-box;
+        overflow: clip;
+    }
+
+
+.fews-logo img{
+    height: 60px;
+}
+
+.fews-logos {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+
+footer {
+    padding-left: var(--sidebar-collapse-width);
+    
+}
+
+@media (max-width:1200px) {
+    footer div .row{
+        flex-direction: column;
+    }
+    .fews-logo, .cgiar-logos, .logos {
+        margin-right: auto;
+    }
+    .policy {
+        margin-left: auto;
+    }
+}
+
+@media (max-width:680px){
+    .cgiar-logos {
+        flex-wrap: wrap;
+    }
+}
+
