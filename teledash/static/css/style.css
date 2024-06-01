@@ -1,11 +1,21 @@
 /*** COLORS ***/
-@bg-color: #5e7c9a;
-@txt-color: #FFFFFF;
-@icn-color: #FFFFFF;
+:root {
+	--bg-color: #5e7c9a;
+	--txt-color: #FFFFFF;
+	--icn-color: #FFFFFF;
+}
+
 
 /*** DEMO ***/
 // html,body{height:100%;margin:0;}
-body{background:@bg-color;font:13px monospace;color:@txt-color!important}p{margin-top:30px}
+body{
+	background: var(--bg-color);
+	font:13px monospace;
+	color: var(--txt-color) !important
+}
+p{
+	margin-top:30px
+}
 .cntr{
 	display:table;
 	width:100%;
@@ -23,13 +33,13 @@ body{background:@bg-color;font:13px monospace;color:@txt-color!important}p{margi
 /*** STYLES ***/
 .tg-button {
 	display: inline-block;
-	background: @icn-color;
+	background: var(--icn-color);
 	position: relative;
 	height: 35px;
 	box-sizing: border-box;
 	margin: 0px 8px 7px 0px;
 	padding: 7px 9px 0px 9px;
-	border: 3px solid @icn-color;
+	border: 3px solid var(--icn-color);
 	margin-right: 0px;
 	border-radius: 0;
 	font:13px monospace;
@@ -42,7 +52,7 @@ body{background:@bg-color;font:13px monospace;color:@txt-color!important}p{margi
 	box-sizing: border-box;
 	margin: 0px 8px 7px 0px;
 	padding: 7px 9px 0px 9px;
-	border: 3px solid @icn-color;
+	border: 3px solid var(--icn-color);
 	transition: all 200ms ease;
 	cursor: text;
 	width: 100px;
@@ -69,7 +79,7 @@ body{background:@bg-color;font:13px monospace;color:@txt-color!important}p{margi
 	box-sizing: border-box;
 	margin: 0px 8px 7px 0px;
 	padding: 7px 9px 0px 9px;
-	border: 3px solid @icn-color;
+	border: 3px solid var(--icn-color);
 	border-radius: 25px;
 	transition: all 200ms ease;
 	cursor: text;

@@ -6,8 +6,7 @@
         <title>TeleDash</title> <!-- may want to replace with jinja variable pulled through? -->
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
-        <link rel="stylesheet/less" type="text/css" href="{{ url_for('static', path='/css/auth.less') }}">
-        <script src="https://cdn.jsdelivr.net/npm/less" ></script>
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='/css/auth.css') }}">
         <!-- Specify body min-height to fill the page if not full already -->
         <style>
             body {
@@ -106,7 +105,7 @@
     <script src="https://cdn.jsdelivr.net/npm/web-streams-polyfill@2.0.2/dist/ponyfill.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <script src="{{ url_for('static', path='/js/auth.js').include_query_params(version='1') }}"></script>
+    <script src="{{ url_for('static', path='/js/auth.js').include_query_params(version='2') }}"></script>
     <script language="javascript">
        async function forgotPassword(){
             let emailAddress = document.getElementById('username').value;
