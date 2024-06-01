@@ -7,7 +7,7 @@
 
 
 /*** DEMO ***/
-// html,body{height:100%;margin:0;}
+
 body{
 	background: var(--bg-color);
 	font:13px monospace;
@@ -21,7 +21,7 @@ p{
 	width:100%;
 	margin-top: 50px;
 	margin-bottom: 50px;
-	// height:100%;
+	
 	.cntr-innr, .cntr-limit, .cntr-submit {
 		display: table-cell;
 		text-align: center;
@@ -74,7 +74,7 @@ p{
 	display: inline-block;
 	position: relative;
 	height: 35px;
-	//width: 35px;
+	
 	
 	box-sizing: border-box;
 	margin: 0px 8px 7px 0px;
@@ -140,7 +140,7 @@ p{
 		max-width: 200px;
 		max-height: 50px!important;
 		overflow: auto;
-		//white-space: nowrap;
+		
 	
 	}
 	th:nth-child(1), td:nth-child(1) {
@@ -277,16 +277,14 @@ select {
 .svg-container {
     display: inline-block;
     position: relative;
-    //min-width: 10%;
-	//height: 100%;
-    //padding-bottom: 100%;
+    
     vertical-align: top;
     overflow: hidden;
-	//height: 100%!important;
+	
 	flex: 2;
 }
 	.svg-container svg{
-		//max-width: 30vw;
+		
 		height: 100%;
 		
 	}
@@ -311,6 +309,6 @@ select {
 	justify-content: center;
 }
 
-// .results-container {
+/* // .results-container {
 //     min-height: 70vh;
-// }
+// } */
