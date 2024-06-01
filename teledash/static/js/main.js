@@ -159,7 +159,7 @@ function callAPI(
         const messageCell = document.createElement("td");
         const timestampCell = document.createElement("td");
         const typeCell = document.createElement("td");
-        const countryCell = document.createElement("td");
+        // const countryCell = document.createElement("td");
         const viewsCell = document.createElement("td");
 
 
@@ -167,14 +167,14 @@ function callAPI(
         messageCell.textContent = item.message;
         timestampCell.textContent = item.timestamp;
         typeCell.textContent = item.type;
-        countryCell.textContent = item.country;
+        // countryCell.textContent = item.country;
         viewsCell.textContent = item.views;
 
         row.appendChild(channelCell);
         row.appendChild(messageCell);
         row.appendChild(timestampCell);
         row.appendChild(typeCell);
-        row.appendChild(countryCell);
+        //row.appendChild(countryCell);
         row.appendChild(viewsCell);
 
         resultTableBody.appendChild(row);
