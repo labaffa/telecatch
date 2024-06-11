@@ -43,6 +43,8 @@ function showChannels(data, title='Collection Title'){
 
 const fileSubmit = document.getElementById('file-table-submit');
 fileSubmit.onclick = (ev) => {
+    $('#collections, #file-table-form').addClass('disabled-div');
+
     ev.preventDefault();
     let form = document.getElementById('file-table-form');
     let data = new FormData(form);
@@ -58,10 +60,8 @@ fileSubmit.onclick = (ev) => {
       })
     .then((data) => {
       window.dataTable = data;
-      console.log(window.dataTable)
       showChannels(window.dataTable.rows, 'Uploaded file');
       $('#collection').show();
-      
     }
     )
     .catch((err) => {
@@ -71,6 +71,8 @@ fileSubmit.onclick = (ev) => {
           - spreadsheet does not contain the columns: url, category, location, language
           - the required url field is missing for some rows 
         `)
+        $('#collection').hide();
+        $('#collections, #file-table-form').removeClass('disabled-div');
     })
 
 };
@@ -253,7 +255,7 @@ async function fetchStatus(uid) {
   })
 };  
 
-$('#collection-submit').click(function(ev){
+$('#collection-submit').click(async function(ev){
   // $('#collection-submit').prop('disabled', true);
   try {
     if (!window.activeClient.client_id){
@@ -302,26 +304,25 @@ $('#collection-submit').click(function(ev){
         }
       })}
     );
-    fetch(`/api/v1/collections/item/${collectionTitle}`, {
+    const response = await fetch(`/api/v1/collections/item/${collectionTitle}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: postCollectionPayload
-    }).then(
-      (response) => {
-        if (response.ok) {
-          return response.json()
+    })
+
+        if (!response.ok) {
+          const data_resp = await response.json();
+          throw new Error(`Error inserting channels in db: ${data_resp.detail}`);
         }
-        throw new Error(`Error inserting channels in db. Collection not saved`)
-      }
-    ).then((data) => {
+        
+        
+      data = await response.json()
       let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
       $('#collection-titles').append(el);
-      
-      console.log("saved collection in user account")
-      console.log(data)
       $('#collection-submit').prop('disabled', false);
       $(':button').prop('disabled', false);
       $('#collection').hide();
+      $('#collections, #file-table-form').removeClass('disabled-div');
       if (!window.activeCollection){
         setActiveCollection(collectionTitle);
         window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
@@ -329,120 +330,6 @@ $('#collection-submit').click(function(ev){
       window.alert(`Channels from file saved in "${collectionTitle}" collection`)
       }
       
-      }).catch((err) => {
-
-        $('#collection-submit').prop('disabled', false);
-        $(':button').prop('disabled', false);
-        if ($('#collection-titles').find('option').length === 0){
-          $('#submit-active-collection').prop('disabled', true);
-        };
-        window.alert(err)
-        console.log('Error: ', err);
-      });
-
-    // fetch(`/api/init_many_channels_to_db`, {
-    //   method: "POST",
-    //   headers: {
-    //     'Content-Type': 'application/json' 
-    //   },
-    //   body: initPayload
-    // }).then(
-    //   (response) => {
-    //     if (response.ok) {
-    //       return response.json()
-    //     }
-    //     throw new Error('Error inserting channels in db. Collection not saved')
-    //     }
-    // ).then((data) => {
-    //   let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
-    //   $('#collection-titles').append(el);
-      
-    //   console.log("saved collection in user account")
-    //   console.log(data)
-    //   $('#collection-submit').prop('disabled', false);
-    //   $(':button').prop('disabled', false);
-    //   $('#collection').hide();
-    //   if (!window.activeCollection){
-    //     setActiveCollection(collectionTitle);
-    //     window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
-    //   }else{
-    //   window.alert(`Channels from file saved in "${collectionTitle}" collection`)
-    //   }
-    // })
-      
-    //   console.log("channels initiated if not already")
-    //   console.log(data)
-    //   fetch(`/api/channel_collection?client_id=${window.activeClient.client_id}`,{
-    //     method: "POST",
-    //     headers: {
-    //       'Content-Type': 'application/json' 
-    //     },
-    //     body: payload
-    //     }).then(
-    //       (response) => {
-    //         if (response.ok) {
-    //           return response.json();
-    //         }
-            
-            
-    //         throw new Error('Collection not added. Possible reasons: client not registered, title already present in your account');
-    //       }
-    //     ).then((data) => {
-
-    //       let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
-    //       $('#collection-titles').append(el);
-          
-    //       console.log("saved collection in user account")
-    //       console.log(data)
-    //       $('#collection-submit').prop('disabled', false);
-    //       $(':button').prop('disabled', false);
-    //       $('#collection').hide();
-    //       if (!window.activeCollection){
-    //         setActiveCollection(collectionTitle);
-    //         window.alert(`Channels from file saved in "${collectionTitle}" collection. The collection is now the current active collection`)
-    //       }else{
-    //       window.alert(`Channels from file saved in "${collectionTitle}" collection`)
-    //       }
-    //       let title = $('#collection-titles').val();
-    //       let queryString = jQuery.param(
-    //         {
-    //           client_id: window.activeClient.client_id,
-    //           collection: title,
-    //           period: 60*60
-    //         },
-    //         traditional=true
-    //       )
-    //       fetch(`/api/set_chat_update_task?${queryString}`,
-    //         {
-    //           method: "PUT",
-    //           headers: {
-    //             'Content-Type': 'application/json' 
-    //           }
-    //         }).then((response) => response.json())
-    //         .then((data) => {
-    //           console.log("Set job to update all channels")
-    //           console.log(data)
-    //         })
-    //     })
-    //     .catch((err) => {
-
-    //       $('#collection-submit').prop('disabled', false);
-    //       $(':button').prop('disabled', false);
-    //       if ($('#submit-active-collection').find('option').length === 0){
-    //         $('#submit-active-collection').prop('disabled', true);
-    //       };
-    //       window.alert(err)
-    //       console.log('Error: ', err);
-    //     });
-    
-    // })
-    // .catch((err) => {
-    //   $('#collection-submit').prop('disabled', false);
-    //   if ($('#submit-active-collection').find('option').length === 0){
-    //     $('#submit-active-collection').prop('disabled', true);
-    //   };
-    //   console.log('Error: ', err);
-    // });
   } catch (error) {
     window.alert(error);
     $('#collection-submit').prop('disabled', false);
@@ -548,7 +435,7 @@ $('#delete-collection').click(function(){
   }
 });
 
-$('#collection-titles').on('click change', function(){
+$('#collection-titles').on('change', function(){
   let title = $('#collection-titles').find(":selected").val();
 
   showCollectionInTable(title);
@@ -570,13 +457,16 @@ async function showCollectionInTable(collectionTitle){
         return clean;
       })
       window.dataTable = cleanData;
-      console.log(cleanData, collectionTitle)
       showChannels(cleanData, collectionTitle);
     })
     .catch((err) => {
         console.log('Error: ', err);
     });
 }
+$('#upload-back').on('click', function(){
+  $('#collections, #file-table-form').removeClass('disabled-div');
+  $('#collection').hide();
+});
 
 $(window).on('load', function(){
   $('#collection').hide();

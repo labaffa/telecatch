@@ -48,6 +48,7 @@
     color: var(--color);
     font-size: 12px;
     box-shadow: inset 1px 1px 0px 1px var(--borderLightest), inset 0 0 0 1px var(--borderDark), 1px 1px 0 0px var(--borderDarkest);
+    
 }
 
 button:not(:disabled) {
@@ -72,3 +73,9 @@ button:not(:disabled) {
     border: 1px solid rgb(209, 209, 214);
     
 }
+
+.disabled-div {
+    pointer-events: none;
+    opacity: 0.5; 
+  }
+
