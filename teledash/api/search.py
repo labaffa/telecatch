@@ -246,7 +246,8 @@ async def search_and_export_messages_and_media_to_zip_file(
             limit=limit,
             offset_channel=offset_channel,
             offset_id=offset_id,
-            user_id=user.id
+            user_id=user.id,
+            reverse=reverse
         )
     
         async def _encoded_results():
