@@ -130,7 +130,8 @@ async def search_single_channel_batch(
     end_date: dt.datetime=None,
     limit: int=100, 
     offset_id: int=0,
-    reverse: bool=False
+    reverse: bool=False,
+    enrich_messages: bool=True
 ):
     all_messages = []
     batch_messages = []
@@ -185,14 +186,14 @@ async def search_single_channel_batch(
         if len(batch_messages) >= 200:
             print("Enriching")
             batch_records = await enrich_and_parse_messages(
-                db, client, entity, batch_messages
+                db, client, entity, batch_messages, enrich=enrich_messages
             )
             
             all_messages.extend(batch_records)
             batch_messages = []
     print("Enriching remaining messages")
     batch_records = await enrich_and_parse_messages(
-        db, client, entity, batch_messages
+        db, client, entity, batch_messages, enrich=enrich_messages
     )
     
     all_messages.extend(batch_records)
@@ -286,7 +287,9 @@ async def enrich_with_author_of_replies(client, entity, messages):
         m["reply_to"]["reply_to_msg_id"]
         for m in messages if m["reply_to"]
     ]))
+    print("getting replied")
     replied_messages = await client.get_messages(entity, ids=reply_ids)
+    print("received")
     replied_messages_by_id = {
         m.id: m.to_dict() for m in replied_messages if m is not None
     }
@@ -300,16 +303,18 @@ async def enrich_with_author_of_replies(client, entity, messages):
     return enriched
 
 
-async def enrich_and_parse_messages(db, client, entity, messages):
+async def enrich_and_parse_messages(db, client, entity, messages, enrich=True):
+    timeout_seconds = 10 if enrich else 0
     try:
-        messages = await enrich_with_author_of_replies(client, entity, messages)
+        async with timeout(timeout_seconds):
+            messages = await enrich_with_author_of_replies(client, entity, messages)
         parsed_batch = [parse_raw_message(m) for m in messages]
         enriched_entities = await enrich_entities_of_messages(
             db, parsed_batch, client
         )
         enriched_messages = enrich_messages_with_entities(parsed_batch, enriched_entities)
     except Exception as e:
-        print("error in enrichment:", e)
+        print("error in enrichment:", str(e))
         parsed_batch = [parse_raw_message(m) for m in messages]
         enriched_messages = list(parsed_batch)
     return enriched_messages
@@ -327,7 +332,8 @@ async def search_all_channels_generator(
     limit: int=100, 
     offset_channel: int=0, 
     offset_id: int=0,
-    reverse: bool=False
+    reverse: bool=False,
+    enrich_messages: bool=True
 ):  
     if not chat_type:
         chat_type = None
@@ -412,7 +418,7 @@ async def search_all_channels_generator(
                 if len(batch_messages) >= 200:  # move to config, it is taken from Telethon get_entity
                     print("Enriching")
                     enriched_messages = await enrich_and_parse_messages(
-                        db, client, entity, batch_messages
+                        db, client, entity, batch_messages, enrich=enrich_messages
                     )
                     batch_messages = []
                     for msg in enriched_messages:
@@ -433,7 +439,7 @@ async def search_all_channels_generator(
                 break
     print("Enriching remaining messages")
     enriched_messages = await enrich_and_parse_messages(
-        db, client, entity, batch_messages
+        db, client, entity, batch_messages, enrich=enrich_messages
     )
     for msg in enriched_messages:
         yield msg
@@ -453,7 +459,8 @@ async def download_all_channels_media(
     offset_id: int=0,
     with_media: bool=True,
     messages_chunk_size: int=1000,
-    reverse: bool=False
+    reverse: bool=False,
+    enrich_messages: bool=True
 ):  
     
     """
@@ -562,7 +569,7 @@ async def download_all_channels_media(
                 if (len(messages_to_enrich) >= 200) or chunk_full:  # move to config, it is taken from Telethon get_entity
                     print("Enriching")
                     enriched_messages = await enrich_and_parse_messages(
-                        db, client, entity, messages_to_enrich
+                        db, client, entity, messages_to_enrich, enrich=enrich_messages
                     )
                     messages_chunk.extend(enriched_messages)
                     messages_to_enrich = []
@@ -583,7 +590,7 @@ async def download_all_channels_media(
                 break
     print("Enriching remaining messages")
     enriched_messages = await enrich_and_parse_messages(
-        db, client, entity, messages_to_enrich
+        db, client, entity, messages_to_enrich, enrich=enrich_messages
     )
     messages_chunk.extend(enriched_messages)
     chunks_count += 1
@@ -949,6 +956,8 @@ async def search_single_channel_batch_trycatch(
         # batch_records = await enrich_and_parse_messages(
         #     db, client, entity, batch_messages
         # )
+
+        # batch_records = batch_messages
         batch_records = [parse_raw_message(m) for m in batch_messages]
         all_messages.extend(batch_records)
     except Exception as e:
@@ -1023,5 +1032,5 @@ async def sample_from_all_channels(
     for coro in coros_responses:
         if isinstance(coro, list):
             all_msg.extend(coro)
-   
-    return sorted(all_msg, key= lambda x: x["timestamp"], reverse=True)
+    all_msg = sorted(all_msg, key= lambda x: x["timestamp"], reverse=True)
+    return all_msg

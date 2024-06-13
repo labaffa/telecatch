@@ -150,7 +150,8 @@ async def search_and_export_messages_and_media_to_zip_file(
     client_id = None,
     with_media: bool=True,
     reverse: bool=False,
-    messages_chunk_size: int=1000
+    messages_chunk_size: int=1000,
+    enrich_messages: bool=True
 ):
     if messages_chunk_size > MAX_MSG_CHUNK_SIZE:
         messages_chunk_size = MAX_MSG_CHUNK_SIZE
@@ -201,7 +202,8 @@ async def search_and_export_messages_and_media_to_zip_file(
             with_media=True,
             user_id=user.id,
             reverse=reverse,
-            messages_chunk_size=messages_chunk_size
+            messages_chunk_size=messages_chunk_size,
+            enrich_messages=enrich_messages
         )
         async def _encoded_results():
             tsv_columns = schemas.Message.__fields__.keys()
@@ -247,7 +249,8 @@ async def search_and_export_messages_and_media_to_zip_file(
             offset_channel=offset_channel,
             offset_id=offset_id,
             user_id=user.id,
-            reverse=reverse
+            reverse=reverse,
+            enrich_messages=enrich_messages
         )
     
         async def _encoded_results():
@@ -258,6 +261,7 @@ async def search_and_export_messages_and_media_to_zip_file(
                 writer.writeheader()
                 yield stream.getvalue()
                 async for item in results:
+                    print(item["id"])
                     stream.truncate(0)
                     stream.seek(0)
                     writer.writerow(item)
