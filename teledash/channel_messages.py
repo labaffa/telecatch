@@ -437,12 +437,15 @@ async def search_all_channels_generator(
             channel_limit = limit - total_msg_count
             if (total_msg_count >= limit):
                 break
-    print("Enriching remaining messages")
-    enriched_messages = await enrich_and_parse_messages(
-        db, client, entity, batch_messages, enrich=enrich_messages
-    )
-    for msg in enriched_messages:
-        yield msg
+    try:
+        print("Enriching remaining messages")
+        enriched_messages = await enrich_and_parse_messages(
+            db, client, entity, batch_messages, enrich=enrich_messages
+        )
+        for msg in enriched_messages:
+            yield msg
+    except Exception as e:
+        print(f'Problem enriching and yielding last chunk of messages from channel {channel_info["url"]} due to: {str(e)}')
 
 
 async def download_all_channels_media(
@@ -588,18 +591,21 @@ async def download_all_channels_media(
             channel_limit = limit - total_msg_count
             if (total_msg_count >= limit):
                 break
-    print("Enriching remaining messages")
-    enriched_messages = await enrich_and_parse_messages(
-        db, client, entity, messages_to_enrich, enrich=enrich_messages
-    )
-    messages_chunk.extend(enriched_messages)
-    chunks_count += 1
-    yield {
-        "type": "messages",
-        "data": messages_chunk,
-        "filename": f"{chunks_count}.tsv"
-    }
-
+    try:
+        print("Enriching remaining messages")
+        enriched_messages = await enrich_and_parse_messages(
+            db, client, entity, messages_to_enrich, enrich=enrich_messages
+        )
+        messages_chunk.extend(enriched_messages)
+        chunks_count += 1
+        yield {
+            "type": "messages",
+            "data": messages_chunk,
+            "filename": f"{chunks_count}.tsv"
+        }
+    except Exception as e:
+        print(f'Problem enriching and yielding last chunk of messages from channel {channel_info["url"]} due to: {str(e)}')
+        
 
 async def join_channel(tg_client, channel: dict):
     """
