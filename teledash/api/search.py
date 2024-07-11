@@ -25,11 +25,13 @@ from teledash.utils.users import active_user
 from typing_extensions import Annotated
 from pydantic import AfterValidator
 import zipfile
+from stat import S_IFREG
+from stream_zip import ZIP_32, async_stream_zip
+from pathlib import Path
+import datetime as dt
 
 
 MAX_MSG_CHUNK_SIZE = 1000
-
-
 search_router = APIRouter()
 
 
@@ -205,29 +207,71 @@ async def search_and_export_messages_and_media_to_zip_file(
             messages_chunk_size=messages_chunk_size,
             enrich_messages=enrich_messages
         )
+        
+    
+        tmp_media_folder = Path('/home/gio/Downloads/tmp_telecatch')
+        tsv_columns = schemas.Message.__fields__.keys()
+                    
+        async def to_async_data(d):
+            yield d
+
+        async def _stream_zip_members():
+            
+            async for item in results:
+                if item["type"] == "media":
+                    tmp_path = tmp_media_folder.joinpath('media_file.jpeg').as_posix()
+                    with open(tmp_path, 'wb') as tmp_f:
+                        tmp_f.write(item['data'])
+                    modified_at = dt.datetime.now()
+                    mode = S_IFREG | 0o600
+                    yield (f'media/{item["filename"]}', modified_at, mode, ZIP_32, to_async_data(item["data"]))
+                elif item["type"] == "messages":
+                    df = pd.DataFrame(item["data"], columns=tsv_columns)
+                    df.to_csv(tmp_path, sep="\t", index=False)
+                    modified_at = dt.datetime.now()
+                    mode = S_IFREG | 0o600
+                    yield (f'messages/{item["filename"]}', modified_at, mode, ZIP_32, to_async_data(df.to_csv(sep="\t", index=False).encode()))
+
+        async def stream_results():
+            async for chunk in async_stream_zip(_stream_zip_members()):
+                yield chunk
+
         async def _encoded_results():
+            
+            tmp_media_folder = Path('/home/gio/Downloads/tmp_telecatch')
             tsv_columns = schemas.Message.__fields__.keys()
+            c = 0
             zip_buffer = io.BytesIO()
             seek_pos = 0
-            with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED) as z:
-                async for item in results:
-                    if item["type"] == "media":
-                        with z.open(f'media/{item["filename"]}', mode='w') as mediafile:
-                            mediafile.write(item["data"])
-                    elif item["type"] == "messages":
-                        df = pd.DataFrame(item["data"], columns=tsv_columns)
-                        with z.open(f'messages/{item["filename"]}', mode='w') as mediafile:
-                            mediafile.write(df.to_csv(sep="\t", index=False).encode())
-                    zip_buffer.seek(seek_pos)
-                    buffer_chunk = zip_buffer.read()
-                    seek_pos = zip_buffer.tell()
-                    yield buffer_chunk
+            z = zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED)
+            async for item in results:
+                
+                c += 1
+                if item["type"] == "media":
+                    with z.open(f'media/{item["filename"]}', mode='w') as mediafile:
+                        mediafile.write(item["data"])
+                elif item["type"] == "messages":
+                    print('yield messages')
+                    df = pd.DataFrame(item["data"], columns=tsv_columns)
+                    with z.open(f'messages/{item["filename"]}', mode='w') as mediafile:
+                        mediafile.write(df.to_csv(sep="\t", index=False).encode())
+                zip_buffer.seek(seek_pos)
+                buffer_chunk = zip_buffer.read()
+                
+                seek_pos = zip_buffer.tell()
+                yield buffer_chunk
+
+            z.close()
+            print('getting end')
+            print(seek_pos)
             zip_buffer.seek(seek_pos)
-            yield zip_buffer.read()
+            final_chunk = zip_buffer.read()
+            # print(final_chunk)
+            yield final_chunk
 
 
         return StreamingResponse(
-            content=_encoded_results(),
+            content=stream_results(),
             media_type="application/x-zip-compressed",
             headers=headers
         )
@@ -351,7 +395,6 @@ async def read_sample_from_channelsl(
             bytes: lambda v: base64.b64encode(v).decode('utf-8')})
         )
     except Exception as e:
-        raise
         raise HTTPException(
             status_code=400, detail=str(e)
         )    
