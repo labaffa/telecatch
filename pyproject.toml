@@ -6,7 +6,7 @@ authors = ["labaffa <dellarovere.lante@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8.1"
+python = "^3.10"
 telethon = "^1.28.5"
 python-dotenv = "^1.0.0"
 uvicorn = "^0.22.0"
@@ -33,7 +33,11 @@ fastapi-mail = "^1.4.1"
 pydantic-settings = "^2.2.1"
 requests = "^2.31.0"
 async-timeout = "^4.0.3"
+stream-zip = "^0.0.81"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.4"
 
 [build-system]
 requires = ["poetry-core"]
