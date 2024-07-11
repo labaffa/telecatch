@@ -27,7 +27,6 @@ from pydantic import AfterValidator
 import zipfile
 from stat import S_IFREG
 from stream_zip import ZIP_32, async_stream_zip
-from pathlib import Path
 import datetime as dt
 
 
@@ -209,7 +208,7 @@ async def search_and_export_messages_and_media_to_zip_file(
         )
         
     
-        tmp_media_folder = Path('/home/gio/Downloads/tmp_telecatch')
+        
         tsv_columns = schemas.Message.__fields__.keys()
                     
         async def to_async_data(d):
@@ -219,15 +218,11 @@ async def search_and_export_messages_and_media_to_zip_file(
             
             async for item in results:
                 if item["type"] == "media":
-                    tmp_path = tmp_media_folder.joinpath('media_file.jpeg').as_posix()
-                    with open(tmp_path, 'wb') as tmp_f:
-                        tmp_f.write(item['data'])
                     modified_at = dt.datetime.now()
                     mode = S_IFREG | 0o600
                     yield (f'media/{item["filename"]}', modified_at, mode, ZIP_32, to_async_data(item["data"]))
                 elif item["type"] == "messages":
                     df = pd.DataFrame(item["data"], columns=tsv_columns)
-                    df.to_csv(tmp_path, sep="\t", index=False)
                     modified_at = dt.datetime.now()
                     mode = S_IFREG | 0o600
                     yield (f'messages/{item["filename"]}', modified_at, mode, ZIP_32, to_async_data(df.to_csv(sep="\t", index=False).encode()))
@@ -237,8 +232,6 @@ async def search_and_export_messages_and_media_to_zip_file(
                 yield chunk
 
         async def _encoded_results():
-            
-            tmp_media_folder = Path('/home/gio/Downloads/tmp_telecatch')
             tsv_columns = schemas.Message.__fields__.keys()
             c = 0
             zip_buffer = io.BytesIO()
