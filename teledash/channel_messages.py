@@ -333,7 +333,8 @@ async def search_all_channels_generator(
     offset_channel: int=0, 
     offset_id: int=0,
     reverse: bool=False,
-    enrich_messages: bool=True
+    enrich_messages: bool=True,
+    ids = None
 ):  
     if not chat_type:
         chat_type = None
@@ -378,7 +379,8 @@ async def search_all_channels_generator(
                 limit=None,  # we use channel_limit counter 
                 offset_id=offset_id,
                 offset_date=offset_date,
-                reverse=reverse
+                reverse=reverse,
+                ids=ids
             ):
                 message_d = message.to_dict()
                 if message_d["_"] != "Message":
@@ -463,7 +465,8 @@ async def download_all_channels_media(
     with_media: bool=True,
     messages_chunk_size: int=1000,
     reverse: bool=False,
-    enrich_messages: bool=True
+    enrich_messages: bool=True,
+    ids = None
 ):  
     
     """
@@ -488,6 +491,9 @@ async def download_all_channels_media(
     all_channels = sorted(
         all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
     )
+    if not all_channels:
+        print(f'No channels found in user account from: {channel_urls}')
+        return 
     total_msg_count = 0
     channel_limit = limit
     messages_chunk = []
@@ -521,7 +527,8 @@ async def download_all_channels_media(
                 limit=None,  # I dont remember why, but we use counter channel_limit
                 offset_id=offset_id,
                 offset_date=offset_date,
-                reverse=reverse
+                reverse=reverse,
+                ids=ids
             ):
                 message_d = message.to_dict()
                 if message_d["_"] != "Message":

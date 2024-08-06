@@ -152,8 +152,11 @@ async def search_and_export_messages_and_media_to_zip_file(
     with_media: bool=True,
     reverse: bool=False,
     messages_chunk_size: int=1000,
-    enrich_messages: bool=True
+    enrich_messages: bool=True,
+    ids: List[int]=Query(default=[])
 ):
+    if not len(ids):
+        ids = None
     if messages_chunk_size > MAX_MSG_CHUNK_SIZE:
         messages_chunk_size = MAX_MSG_CHUNK_SIZE
     if collection_title is not None:
@@ -204,7 +207,8 @@ async def search_and_export_messages_and_media_to_zip_file(
             user_id=user.id,
             reverse=reverse,
             messages_chunk_size=messages_chunk_size,
-            enrich_messages=enrich_messages
+            enrich_messages=enrich_messages,
+            ids=ids
         )
         
     
@@ -287,7 +291,8 @@ async def search_and_export_messages_and_media_to_zip_file(
             offset_id=offset_id,
             user_id=user.id,
             reverse=reverse,
-            enrich_messages=enrich_messages
+            enrich_messages=enrich_messages,
+            ids=ids
         )
     
         async def _encoded_results():
