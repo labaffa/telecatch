@@ -12,6 +12,7 @@ from teledash.api.collections import collection_router
 from teledash.api.telegram_clients import clients_router
 from teledash.api.channels import channel_router
 from teledash.ui.channels import router as ui_channels_router
+from teledash.api.admin import admin_router
 from teledash.utils.db import tg_client as ut
 from teledash.db.db_setup import create_db_and_tables, async_session_maker
 from teledash.utils.users import auth_backend, fastapi_users, cookie_auth_backend
@@ -126,6 +127,7 @@ app.include_router(ui_login_router, include_in_schema=False)
 app.include_router(search_router, prefix="/api/v1", tags=["search"])
 app.include_router(collection_router, prefix="/api/v1/collections", tags=["collections"])
 app.include_router(clients_router, prefix="/api/v1/clients", tags=["telegram clients"])
+app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(
     fastapi_users.get_auth_router(auth_backend), 
     prefix="/api/v1/auth",
