@@ -19,6 +19,7 @@ this_folder = os.path.dirname(this_path)
 repo_folder = os.path.dirname(os.path.dirname(this_folder))
 SOURCE_FOLDER = os.path.dirname(this_folder)
 SESSIONS_FOLDER =  os.path.join(SOURCE_FOLDER, "sessions")
+DATA_FOLDER = os.path.join(SOURCE_FOLDER, "data")
 
 SQLALCHEMY_DATABASE_URL = (
     'sqlite+aiosqlite:///' + 
