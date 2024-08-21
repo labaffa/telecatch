@@ -38,8 +38,8 @@ class MyBase(Base):
 class User(SQLAlchemyBaseUserTableUUID, MyBase):
     __tablename__ = "user"
     __table_args__ = (
-       UniqueConstraint("username", name="user_username"),
-       UniqueConstraint("email", name="user_email")
+       # UniqueConstraint("username", name="user_username"),
+       UniqueConstraint("email", name="user_email"),
     )
     username = Column(Text, nullable=False)
     displayname = Column(Text, nullable=True, default="")
@@ -66,14 +66,9 @@ class ChannelCommon(MyBase):
     updated_at = Column(DateTime)
 
 
-class Tag(MyBase):
-    __tablename__ = "tag"
-    id = Column(Integer, primary_key=True)
-    name = Column(Text, nullable=False)
-
-
 class ChannelCustom(MyBase):
     __tablename__ = "channel_custom"
+
     channel_url = Column(Text, primary_key=True)
     user_id = Column(fastapi_users_db_sqlalchemy.generics.GUID(), primary_key=True)
     language = Column(Text, nullable=True)
@@ -81,13 +76,6 @@ class ChannelCustom(MyBase):
     category = Column(Text, nullable=True)
     is_joined = Column(Boolean, default=False)
 
-
-class ChannelTag(MyBase):
-    __tablename__ = "channel_tag"
-
-    channel_id = Column(Integer, primary_key=True)
-    user_id = Column(fastapi_users_db_sqlalchemy.generics.GUID(), primary_key=True)
-    tag_id = Column(Integer, primary_key=True) 
 
 
 class TgClient(MyBase):
@@ -115,6 +103,9 @@ class ChannelCollection(MyBase):
     collection_title = Column(Text, primary_key=True)
     user_id = Column(fastapi_users_db_sqlalchemy.generics.GUID(), primary_key=True)
     channel_url = Column(Text, primary_key=True)
+    language = Column(Text, nullable=True)
+    location = Column(Text, nullable=True)
+    category = Column(Text, nullable=True)
 
 
 class CollectionJob(MyBase):
