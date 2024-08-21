@@ -275,7 +275,7 @@ async def get_authenticated_client(
     db: Session, client_id: str
 ):
     
-    """ TODO: should we use httpexception here???"""
+    """ TODO: remove httpexception from non fastapi endpoints """
     session_path = Path(config.SESSIONS_FOLDER).joinpath(
         client_id
     )
