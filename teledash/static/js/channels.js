@@ -201,37 +201,6 @@ fileSubmit.onclick = (ev) => {
 
 
 
-/* function handleSubmit(event) {
-    // taken from https://www.freecodecamp.org/news/upload-files-with-javascript/
-
-    
-    event.preventDefault();
-    const form = event.currentTarget;
-    const url = new URL(form.action);
-    const formData = new FormData(form);
-    const searchParams = new URLSearchParams(formData);
-  
-    
-    const fetchOptions = {
-      method: form.method,
-    };
-  
-    if (form.method.toLowerCase() === 'post') {
-      if (form.enctype === 'multipart/form-data') {
-        fetchOptions.body = formData;
-      } else {
-        fetchOptions.body = searchParams;
-      }
-    } else {
-      url.search = searchParams;
-    }
-  
-    fetch(url, fetchOptions)
-    .then(response => response.json())
-    .then(data => {showChannels(data)})
-  
-  }; 
-*/
 
 async function fetchStatus(uid) {
   let baseURL = `/api/work/${uid}/status`;
@@ -454,6 +423,7 @@ async function showCollectionInTable(collectionTitle){
       console.log(data)
       let cleanData = data.data.map((o) => {
         let { channel_url, ...clean } = o;
+        clean['url'] = 'https://t.me/' + clean['url'];
         return clean;
       })
       window.dataTable = cleanData;
