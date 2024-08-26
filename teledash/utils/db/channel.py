@@ -45,122 +45,41 @@ async def get_channel_by_url(
     return result
 
 
-async def get_channels_from_list_of_urls(
+async def get_channel_common_from_list_of_urls(
     db: Session,
-    urls: Iterable[str],
-    user_id: int
-):
-    """
-    At first, this function (and the api/channels_info endpoint) was 
-    planned to retrieve just ChannelCommon, but now it takes both Common and
-    Custom (so it needs user_id)
-
-    So now there is no endpoint and function to get a channel without being
-    logged in
-    """
-    filters = [models.ChannelCustom.user_id == user_id]
-    if urls:
-        # we search case insensitively
-        urls = [x.lower() for x in urls]  
-        filters.append(func.lower(models.ChannelCommon.url).in_(urls))
-    query = select(
-        models.ChannelCommon.username,
-        models.ChannelCommon.title,
-        models.ChannelCommon.url,
-        models.ChannelCommon.type,
-        models.ChannelCommon.id,
-        models.ChannelCommon.access_hash,
-        models.ChannelCommon.participants_count,
-        models.ChannelCommon.messages_count,
-        models.ChannelCommon.inserted_at,
-        models.ChannelCommon.updated_at,
-        models.ChannelCustom.location,
-        models.ChannelCustom.category,
-        models.ChannelCustom.language
-        )\
-        .join(
-            models.ChannelCustom,
-            func.lower(models.ChannelCommon.url) == func.lower(models.ChannelCustom.channel_url)
-        )\
-        .where(*filters)
-    result = await db.execute(query)
-    return result.mappings().all()
-
-
-async def get_channels_custom_from_list_of_urls(
-    db: Session,
-    user_id: int,
     urls: Iterable[str]
 ):
-    filters = [
-        models.ChannelCustom.user_id == user_id
-    ]
-    if urls:
-        # we search case insensitively
-        urls = [x.lower() for x in urls]
-        filters.append(func.lower(models.ChannelCustom.channel_url).in_(urls))
+    """
+    Retrieves channel common information from a list of URLs.
+
+    Args:
+        db (Session): The database session.
+        urls (Iterable[str]): The list of URLs to retrieve channel information from.
+
+    Returns:
+        List[Dict]: A list of dictionaries containing the channel common information.
+    """
+    if not urls:
+        return []
+    urls = [url.lower() for url in urls]
     query = select(
-        models.ChannelCustom.channel_url,
-        models.ChannelCustom.category,
-        models.ChannelCustom.language,
-        models.ChannelCustom.location,
-        models.ChannelCustom.is_joined,
-        models.ChannelCustom.user_id
+        models.ChannelCommon.id,
+        models.ChannelCommon.access_hash,
+        models.ChannelCommon.url,
+        models.ChannelCommon.username,
+        models.ChannelCommon.type,
+        models.ChannelCommon.title,
+        models.ChannelCommon.about,
+        models.ChannelCommon.messages_count,
+        models.ChannelCommon.participants_count,
+        models.ChannelCommon.inserted_at,
+        models.ChannelCommon.updated_at,
         )\
-        .where(*filters)
-        # .join(
-        #     models.ChannelCustom,
-        #     models.ChannelCommon.id == models.ChannelCustom.channel_id
-        # )\
+        .where(func.lower(models.ChannelCommon.url).in_(urls))
     result = await db.execute(query)
     return result.mappings().all()
 
 
-async def get_channel_custom_by_url(db: Session, url: str, user_id: int):
-    query = select(
-        models.ChannelCustom
-        )\
-        .where(
-            func.lower(models.ChannelCustom.channel_url) == url.lower(),
-            models.ChannelCustom.user_id == user_id
-        )
-    raw_result = await db.execute(query)
-    result = raw_result.mappings().all()
-    result = result[0] if result else None
-    return result
-
-
-def get_channel_with_custom_fields(
-    db: Session, 
-    user_id: int,
-    url: Union[str, None]=None, 
-    is_joined: Union[bool, None]=None
-):
-    filters = [
-        func.lower(models.ChannelCommon.url) == url.lower(),
-        models.ChannelCustom.user_id == user_id
-    ]
-    if is_joined is not None:
-        filters.append(
-            models.ChannelCustom.is_joined == is_joined
-        )
-    query = select(
-        models.ChannelCustom.channel_url,
-        models.ChannelCustom.user_id,
-        models.ChannelCustom.location,
-        models.ChannelCustom.category,
-        models.ChannelCustom.language,
-        models.ChannelCommon.title,
-        models.ChannelCommon.about,
-        models.ChannelCommon.id,
-        models.ChannelCommon.username
-        )\
-        .join(
-            models.ChannelCustom, 
-            func.lower(models.ChannelCommon.url) == func.lower(models.ChannelCustom.channel_url))\
-        .where(*filters)
-    result = db.execute(query)
-    return result.mappings().all()
 
 
 async def insert_channel_common(
@@ -239,88 +158,6 @@ async def update_channel_common(
     await db.flush()
 
 
-def insert_channel_custom(
-    db: Session, channel: schemas.ChannelCustom
-):
-    channel.channel_url = channel.channel_url.lower()
-    db_channel = models.ChannelCustom(**dict(channel))
-    db.add(db_channel)
-    db.commit()
-    db.refresh(db_channel)
-    return db_channel
-
-
-async def upsert_channel_custom(
-    db: Session, channel: schemas.ChannelCustom      
-):
-    # channel.channel_url = channel.channel_url.lower()
-    channel_in_db = await get_channel_custom_by_url(
-        db, channel.channel_url, channel.user_id
-    )
-    if channel_in_db:
-        # this is due to 'select(ChannelCustom)' in query. TODO: fix this
-        channel_in_db = next(v.to_dict() for k, v in channel_in_db.items())
-        channel.channel_url = channel_in_db["channel_url"]  # to not remove not lowered ones
-        filters = [
-            models.ChannelCustom.channel_url == channel_in_db["channel_url"],
-            models.ChannelCustom.user_id == channel_in_db["user_id"]
-        ]
-        stmt = update(models.ChannelCustom)\
-            .values(dict(channel))\
-            .where(*filters)
-        # db.query(models.ChannelCustom)\
-        #     .filter(*filters)\
-        #     .update(dict(channel))
-    else:
-        channel.channel_url = channel.channel_url.lower()  # new channels will be lower 
-        channel_custom = models.ChannelCustom(**dict(channel))
-        stmt = insert(models.ChannelCustom)\
-            .values(**channel_custom.to_dict())
-        # db.add(channel_custom)
-    await db.execute(stmt)
-    await db.commit()  # we should commit everything after collection created
-    await db.flush()  # same?
-    return dict(channel)
-
-
-def upsert_many_channel_custom(
-    db: Session, channels: List[dict]
-):
-    for channel in channels:
-        channel_in_db = get_channel_custom_by_url(
-            db, channel["channel_url"], channel["user_id"]
-        )
-        if channel_in_db:
-            db.query(models.ChannelCustom)\
-                .filter_by(channel_url=channel["channel_url"])\
-                .update(dict(channel))
-        else:
-            channel_custom = models.ChannelCustom(**dict(channel))
-            db.add(channel_custom)
-    db.commit()
-    db.flush()
-    return {"status": "ok"}
-
-
-def update_channel_custom(
-    db: Session, channel_url: str, user_id: int, update_dict: dict
-):
-    # _, _ = update_dict.pop("channel_id"), update_dict.pop("user_id")
-
-    # common_channel = select(
-    #     models.ChannelCommon.id
-    #     )\
-    #     .where(models.ChannelCommon.url == channel_url)
-    db.query(models.ChannelCustom).\
-        filter(
-            models.ChannelCustom.channel_url == channel_url,
-            models.ChannelCustom.user_id == user_id
-        )\
-        .update(update_dict)
-    db.commit()
-    db.flush()
-
-
 def insert_single_channel_in_collection(
     db: Session,
     collection_title: str,
@@ -340,11 +177,17 @@ async def insert_channel_collection(
     db: Session, 
     collection_title: str,
     user_id: int,
-    channels: List[schemas.ChannelCreate] 
+    channels: List[schemas.ChannelCustom] 
 ):
     db_channels_collection = [
         models.ChannelCollection(
-            user_id=user_id, collection_title=collection_title, channel_url=channel.url.lower()
+            user_id=user_id, 
+            collection_title=collection_title, 
+            channel_url=channel.channel_url.lower(),
+            language=channel.language,
+            location=channel.location,
+            category=channel.category
+
         )
         for channel in channels
     ]
@@ -362,8 +205,7 @@ async def get_channel_collection(
 ):
     filters = [
         models.ChannelCollection.user_id == user_id,
-        models.ChannelCollection.collection_title == collection_title,
-        models.ChannelCustom.user_id == user_id
+        models.ChannelCollection.collection_title == collection_title
     ]
     query = select(
         models.ChannelCollection.channel_url,
@@ -374,19 +216,15 @@ async def get_channel_collection(
         models.ChannelCommon.type,
         models.ChannelCommon.participants_count,
         models.ChannelCommon.messages_count,
-        models.ChannelCustom.category,
-        models.ChannelCustom.location,
-        models.ChannelCustom.language,
-        models.ChannelCustom.user_id,
+        models.ChannelCollection.category,
+        models.ChannelCollection.location,
+        models.ChannelCollection.language,
+        models.ChannelCollection.user_id,
         models.ChannelCollection.collection_title
         )\
         .join(
             models.ChannelCollection,
             func.lower(models.ChannelCommon.url) == func.lower(models.ChannelCollection.channel_url)
-        )\
-        .join(
-            models.ChannelCustom,
-            func.lower(models.ChannelCustom.channel_url) == func.lower(models.ChannelCollection.channel_url)
         )\
         .where(*filters)
     result = await db.execute(query)
