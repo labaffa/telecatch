@@ -43,25 +43,14 @@ async def read_get_channel(
         bytes: lambda v: base64.b64encode(v).decode('utf-8')}))
 
 
-@channel_router.get("/channels_info")
-async def info_of_channels_and_groups(
+@channel_router.get("/info_of_channels_in_collection")
+async def info_of_channels_in_collection(
+
     db: Session = Depends(get_async_session),
-    channel_urls: List[str]=Query(default=[]),
+    collection_title: str=Query(default=""),
     user: db_models.User = Depends(active_user)
 ):
-    # sql_result = uc.get_channel_by_url(db=db, is_joined=is_joined)
-    
-
-    # # TODO: understand why sql_result output is different from
-    # # fewsboard one. 
-    # channels = [row[0].to_dict() for row in sql_result]
-
-    # the if-else is used here because uc function gets all the channels  
-    # present in the DB if channel_urls is empty (should I modify this behavior?)
-    if channel_urls:
-        channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user.id)
-    else:
-        channels = []
+    channels = await uc.get_channel_collection(db, user.id, collection_title)
     meta = {
         "channel_count": sum(
             1 for c in channels if c["type"] == "channel"),
@@ -76,17 +65,6 @@ async def info_of_channels_and_groups(
     }
     data = [schemas.ChannelInfo(**c) for c in channels]
     return {"meta": meta, "data": data}
-
-
-@channel_router.get("/channels_custom_info")
-async def info_of_channels_custom(
-    db: Session = Depends(get_async_session),
-    channel_urls: List[str]=Query(default=[]),
-    user = Depends(active_user)
-):
-    channels = await uc.get_channels_custom_from_list_of_urls(db, user.id, channel_urls)
-    data = [schemas.ChannelCustom(**c) for c in channels]
-    return data
 
 
 # @channel_router.post(
@@ -158,35 +136,7 @@ async def info_of_channels_custom(
 #     }
 
 
-# @channel_router.delete(
-#     "/api/channel_custom", 
-#     # response_model=models.Channel
-# )
-# async def delete_channel_custom_from_db(
-#     channel: models.ChannelCreate,
-#     db: Session = Depends(get_db),
-#     user = Depends(config.settings.MANAGER)
-# ):
-#     channel_in_db = uc.get_channel_custom_by_url(db, channel.url, user.id)
-    
-#     if not channel_in_db:
-#         raise HTTPException(
-#             status_code=400, 
-#             detail="Channel is not present in your account's channels"
-#         )
-#     try:
-#         stmt = delete(db_models.ChannelCustom)\
-#             .where(
-#                 db_models.ChannelCustom.channel_url == channel.url,
-#                 db_models.ChannelCustom.user_id == user.id
-#             )
-#         db.execute(stmt)
-#         db.commit()
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-#     return {
-#         "status": "ok", "data": channel_in_db
-#     }
+
 
 
 
@@ -478,27 +428,6 @@ async def info_of_channels_custom(
 #         )
 
 
-# @channel_router.post("/api/channel_custom")
-# async def add_custom_channel_fields_from_user(
-#     request: Request,
-#     channel_custom: dict,
-#     client_id: str,
-#     db: Session = Depends(get_db),
-#     user = Depends(config.settings.MANAGER)
-# ):
-#     tg_client = request.app.state.clients.get(client_id)
-#     if tg_client is None:
-#         tg_client = await telegram.get_authenticated_client(client_id)
-#         request.app.state.clients[client_id] = tg_client
-#     record = channel_custom    
-#     try:
-#         record["user_id"] = user.id
-#         uc.insert_channel_custom(db, schemas.ChannelCustom(**record))
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-#     return record
-
-
 # @channel_router.post("/api/list_of_channels_custom")
 # async def add_list_of_channels_custom(
 #     request: Request,
@@ -522,30 +451,6 @@ async def info_of_channels_custom(
 #     return response
 
 
-# @channel_router.put("/api/update_channel_custom")
-# async def update_custom_channel_fields_from_user(
-#     request: Request,
-#     channel_url: str,
-#     update_dict: dict,
-#     client_id: str,
-#     db: Session = Depends(get_db),
-#     user = Depends(config.settings.MANAGER)
-# ):
-#     tg_client = request.app.state.clients.get(client_id)
-#     if tg_client is None:
-#         tg_client = await telegram.get_authenticated_client(client_id)
-#         request.app.state.clients[client_id] = tg_client
-    
-#     try:
-#         uc.update_channel_custom(db, channel_url, user.id, update_dict)
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-#     record = uc.get_channel_with_custom_fields(db, user.id, channel_url)
-    
-#     return {
-#         "status": "ok", 
-#         "data": record
-#     }
 
 
 # @channel_router.post("/api/channel_collection")
@@ -579,91 +484,6 @@ async def info_of_channels_custom(
 #         "data": record
 #     }
 
-
-@channel_router.post("/add_collection")
-async def add_collection_of_channels_to_user_account(
-    request: Request,
-    collection_title: str,
-    file: UploadFile,
-    db: Session = Depends(get_async_session),
-    user: schemas.User =  Depends(active_user)
-):
-    content = await file.read()
-    file_channels = []
-    try:
-        # Try parsing as CSV
-        df = pd.read_csv(
-            io.BytesIO(content), 
-            sep=None, 
-            engine="python",
-            encoding="ISO-8859-1"
-            
-        )
-    except Exception:
-        try:
-            df = pd.read_excel(io.BytesIO(content))
-        except Exception as e:
-            raise HTTPException(
-                status_code=400, 
-                detail="File could not be parsed. Try to use .xls, .xlsx, .csv, .tsv"
-            )
-    # TODO: check if columns don't match schema
-    if len(df) == 0:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"List of channels for the collection '{collection_title}' is empty"
-        )
-    try:
-        df.columns = df.columns.str.lower()
-        df = df.replace({np.nan: None})
-        if "url" in df.columns:
-            df.rename(columns={"url": "channel_url"}, inplace=True)
-        df = df.drop_duplicates("channel_url")
-        for row in df.to_dict("records"):
-            row_d = schemas.ChannelCustomCreate(**dict(row)).model_dump()
-            file_channels.append(row_d)
-    except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=str(e)
-        )
-    
-    client_id = await uu.get_active_client(db, user.id)
-    tg_client = request.app.state.clients.get(client_id)
-    if tg_client is None:
-        tg_client = await telegram.get_authenticated_client(db, client_id)
-        request.app.state.clients[client_id] = tg_client
-    collection_in_db = await uc.get_channel_collection(
-        db, user.id, collection_title)
-    if collection_in_db:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Title '{collection_title}' already present in your collections"
-        )
-    try:
-        for channel in file_channels:
-            channel_url = channel["channel_url"]
-            channel_common_in_db = await uc.get_channel_by_url(
-                db, channel_url
-            )
-            if not channel_common_in_db:
-                channel_common = schemas.ChannelCommon(url=channel_url.lower())
-                await uc.insert_channel_common(db, channel_common)
-            
-            channel_custom = schemas.ChannelCustom(**dict(channel), user_id=user.id)
-            await uc.upsert_channel_custom(db, channel_custom)
-        await uc.insert_channel_collection(
-            db, 
-            collection_title, user.id, 
-            [schemas.ChannelCreate(url=x["channel_url"]) for x in file_channels]
-        )
-        record = await uc.get_channel_collection(db, user.id, collection_title)
-        response = {
-            "status": "ok",
-            "data": record
-        }
-        return response
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 # @channel_router.delete("/api/channel_collection")
