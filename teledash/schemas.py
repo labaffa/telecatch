@@ -202,6 +202,9 @@ class ChannelCollection(BaseModel):
     collection_title: str
     user_id: int
     channel_url: str
+    language: str | None = None
+    location: str | None = None
+    category: str | None = None    
 
 
 class ChannelCollectionPayload(BaseModel):
