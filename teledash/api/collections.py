@@ -18,6 +18,7 @@ from asyncio import current_task
 from sqlalchemy.ext.asyncio import async_scoped_session
 from typing import List
 from pydantic import BaseModel
+from telethon.utils import parse_username
 
 
 collection_router = fastapi.APIRouter()
@@ -54,43 +55,59 @@ async def file_to_list_of_channel_creators(input_file: fastapi.UploadFile):
             "ok": False,
             "detail": "File does not contain valid channels"
         }
+    invalid_channels = []
     try:
-        df.columns = df.columns.str.lower()
+        df.columns = df.columns.str.lower().str.strip()
         df = df.replace({np.nan: None})
         if "url" in df.columns:
             df.rename(columns={"url": "channel_url"}, inplace=True)
         df = df.drop_duplicates("channel_url")
         for row in df.to_dict("records"):
+            channel_url = row.get("channel_url")
+            row['channel_url'] = parse_username(channel_url)[0]  # try to tranform to lower username
+            if row['channel_url'] is None:
+                invalid_channels.append(channel_url)
+                continue
             row_d = schemas.ChannelCustomCreate(**dict(row)).model_dump()
             file_channels.append(row_d)
-        out = {"data": file_channels, "ok": True, "detail": None}
+        out = {"data": file_channels, "ok": True, "detail": None, "invalid_channels": invalid_channels}
     except Exception as e:
         out = {"data": None, "ok": False, "detail": str(e)}
     return out
 
 
 async def add_collection(db: Session, user: models.User, channels, title):
+    invalid_channels = []
     for channel in channels:
-        channel["channel_url"] = channel["channel_url"].strip().lower()
         channel_url = channel["channel_url"]
+        channel["channel_url"] = parse_username(channel["channel_url"])[0]
+        if channel["channel_url"] is None:
+
+            invalid_channels.append(channel_url)
+            continue
         channel_common_in_db = await uc.get_channel_by_url(
-            db, channel_url
+            db, channel["channel_url"]
         )
         if not channel_common_in_db:
-            channel_common = schemas.ChannelCommon(url=channel_url.lower())
+            channel_common = schemas.ChannelCommon(url=channel["channel_url"].lower())
             await uc.insert_channel_common(db, channel_common)
         
-        channel_custom = schemas.ChannelCustom(**dict(channel), user_id=user.id)
-        await uc.upsert_channel_custom(db, channel_custom)
+        # channel_custom = schemas.ChannelCustom(**dict(channel), user_id=user.id)
+        # await uc.upsert_channel_custom(db, channel_custom)
     await uc.insert_channel_collection(
         db, 
-        title, user.id, 
-        [schemas.ChannelCreate(url=x["channel_url"]) for x in channels]
+        title, 
+        user.id, 
+        [
+            schemas.ChannelCustom(**dict(x), user_id=user.id) 
+            for x in channels if x["channel_url"] is not None
+        ]
     )
     record = await uc.get_channel_collection(db, user.id, title)
     response = {
         "status": "ok",
-        "data": record
+        "data": record,
+        "invalid_channels": invalid_channels
     }
     return response
 
