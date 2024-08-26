@@ -236,7 +236,7 @@ async def search_all_channels(
     total_msg_count = 0
     channel_limit = limit
     channel_urls = [x.strip().lower() for x in channel_urls]
-    all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
+    all_channels = await uc.get_channel_common_from_list_of_urls(db, channel_urls)
     all_channels = sorted(
         all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
     )
@@ -341,7 +341,7 @@ async def search_all_channels_generator(
     if limit < 0:
         limit = None
     channel_urls = [x.strip().lower() for x in channel_urls]
-    all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
+    all_channels = await uc.get_channel_common_from_list_of_urls(db, channel_urls)
     all_channels = sorted(
         all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
     )
@@ -487,7 +487,7 @@ async def download_all_channels_media(
         limit = None
 
     channel_urls = [x.strip().lower() for x in channel_urls]
-    all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
+    all_channels = await uc.get_channel_common_from_list_of_urls(db, channel_urls)
     all_channels = sorted(
         all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
     )
@@ -1003,7 +1003,7 @@ async def sample_from_all_channels(
     all_msg = []
     total_msg_count = 0
     channel_urls = [x.strip().lower() for x in channel_urls]
-    all_channels = await uc.get_channels_from_list_of_urls(db, channel_urls, user_id)
+    all_channels = await uc.get_channel_common_from_list_of_urls(db, channel_urls)
     all_channels = sorted(
         all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
     )
