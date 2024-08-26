@@ -551,11 +551,14 @@ function initChatGroupsSelect(eleId){
 
 
 async function updateMonitor(){
+  if (!window.activeCollection){
+    return;
+  }
   let queryString = jQuery.param(
-    {channel_urls: window.channelUrls},
+    {collection_title: window.activeCollection},
     traditional=true
   )
-  fetch(`/api/v1/channels/channels_info?${queryString}`, 
+  fetch(`/api/v1/channels/info_of_channels_in_collection?${queryString}`, 
       {
           headers: {'Cache-Control': 'no-cache'}
       }
