@@ -34,21 +34,19 @@ async def file_to_list_of_channel_creators(input_file: fastapi.UploadFile):
     content = await input_file.read()
     file_channels = []
     try:
-        df = pd.read_csv(
-            io.BytesIO(content),
-            sep=None,
-            engine="python",
-            encoding="ISO-8859-1"
-        )
+        # Try parsing as CSV
+        reader = pd.read_csv(io.BytesIO(content), sep = None, engine='python', iterator = True)
+        inferred_sep = reader._engine.data.dialect.delimiter
+        df = pd.read_csv(io.BytesIO(content), sep=inferred_sep)
+
     except Exception:
         try:
             df = pd.read_excel(io.BytesIO(content))
         except Exception as e:
-            out =  {
-                "data": None,
-                "ok": False,
-                "detail": "File could not be parsed. Try to use .xls, .xlsx, .csv, .tsv"
-            }
+            raise fastapi.HTTPException(
+                status_code=400, 
+                detail="File could not be parsed. Try to use .xls, .xlsx, .csv, .tsv"
+        )
     if len(df) == 0:
         out = {
             "data": [],
@@ -58,9 +56,17 @@ async def file_to_list_of_channel_creators(input_file: fastapi.UploadFile):
     invalid_channels = []
     try:
         df.columns = df.columns.str.lower().str.strip()
+
         df = df.replace({np.nan: None})
         if "url" in df.columns:
             df.rename(columns={"url": "channel_url"}, inplace=True)
+        if "channel_url" not in df.columns:
+            raise fastapi.HTTPException(
+                status_code=400, 
+                detail="No 'url' or 'channel_url' column found in the file. It is required"
+            )
+        df = df.replace({np.nan: None})
+        df = df.dropna(how="all")        
         df = df.drop_duplicates("channel_url")
         for row in df.to_dict("records"):
             channel_url = row.get("channel_url")
@@ -350,16 +356,13 @@ async def upload_entities(file: fastapi.UploadFile):
     content = await file.read()
     error = None
     data = []
+    invalid_rows = []
     try:
         # Try parsing as CSV
-        df = pd.read_csv(
-            io.BytesIO(content), 
-            sep=None, 
-            engine="python",
-            encoding="ISO-8859-1"
-            
-        )
-    
+        reader = pd.read_csv(io.BytesIO(content), sep = None, engine='python', iterator = True)
+        inferred_sep = reader._engine.data.dialect.delimiter
+        df = pd.read_csv(io.BytesIO(content), sep=inferred_sep)
+
     except Exception:
         try:
             df = pd.read_excel(io.BytesIO(content))
@@ -369,15 +372,33 @@ async def upload_entities(file: fastapi.UploadFile):
                 detail="File could not be parsed. Try to use .xls, .xlsx, .csv, .tsv"
             )
     try:
-        df.columns = df.columns.str.lower()
+        df.columns = df.columns.str.strip().str.lower()
+        if "url" not in df.columns:
+            raise fastapi.HTTPException(
+                status_code=400, 
+                detail="No 'url' column found in the file. It is required"
+            )
         df = df.replace({np.nan: None})
+        df = df.dropna(how="all")
+        # remove rows where url is None or empty
+        invalid_rows.extend(df[df["url"].isna()].to_dict("records"))
+        df = df[~df["url"].isna()]
         for row in df.to_dict("records"):
-            row = schemas.ChannelUpload(**row).model_dump()
-            data.append(row)
+            channel_url = parse_username(row["url"])[0]
+            if channel_url is None:
+                invalid_rows.append(row)
+                continue
+            row["url"] = channel_url
+            try:
+                row = schemas.ChannelUpload(**row).model_dump()
+                data.append(row)
+            except Exception as e:
+                invalid_rows.append(row)
         return {
             "message": "File ok",
             "error": error,
-            "rows": data
+            "rows": data,
+            "invalid_rows": invalid_rows
         }
     except Exception as e:
         raise fastapi.HTTPException(
