@@ -246,11 +246,11 @@ $('#collection-submit').click(async function(ev){
       throw new Error('Set a Collection title before submitting')
     }
     $('#collection-status').text(`Saving collection with title: ${collectionTitle}`);
-    let channels = window.dataTable.rows.map(function(x) {
+    let channels = window.dataTable.map(function(x) {
       return x.url.trim();
     });
 
-    let channelcreate_items = window.dataTable.rows.map(function(x){
+    let channelcreate_items = window.dataTable.map(function(x){
       return {"url": x.url.trim()}
     });
     let payload = JSON.stringify(
@@ -259,7 +259,7 @@ $('#collection-submit').click(async function(ev){
     
     
     let initPayload = JSON.stringify(
-      window.dataTable.rows.map(function(x){
+      window.dataTable.map(function(x){
         return {
           channel_url: x.url.trim(), 
           category: x.category, 
@@ -270,7 +270,7 @@ $('#collection-submit').click(async function(ev){
     );
     let postCollectionPayload = JSON.stringify({
       "title": collectionTitle,
-      "channels": window.dataTable.rows.map(function(x){
+      "channels": window.dataTable.map(function(x){
         return {
           channel_url: x.url.trim(), 
           category: x.category, 
