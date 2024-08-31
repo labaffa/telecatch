@@ -59,8 +59,14 @@ fileSubmit.onclick = (ev) => {
       return response.json().then((data) => {throw new Error(data.detail)})
       })
     .then((data) => {
-      window.dataTable = data;
-      showChannels(window.dataTable.rows, 'Uploaded file');
+      console.log(data)
+      let cleanData = data.rows.map((o) => {
+        o['url'] = 'https://t.me/' + o['url'];
+        return o;
+      })
+      
+      window.dataTable = cleanData;
+      showChannels(window.dataTable, 'Uploaded file');
       $('#collection').show();
     }
     )
@@ -412,7 +418,7 @@ $('#collection-titles').on('change', function(){
 
 
 async function showCollectionInTable(collectionTitle){
-  console.log(collectionTitle)
+  
   fetch(`/api/v1/collections/item/${collectionTitle}`, {
     method: 'GET',
     headers: {
@@ -420,7 +426,6 @@ async function showCollectionInTable(collectionTitle){
     }}
   ).then((response) => response.json())
     .then((data) => {
-      console.log(data)
       let cleanData = data.data.map((o) => {
         let { channel_url, ...clean } = o;
         clean['url'] = 'https://t.me/' + clean['url'];
