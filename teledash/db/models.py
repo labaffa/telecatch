@@ -18,23 +18,6 @@ class MyBase(Base):
         return {field.name:getattr(self, field.name) for field in self.__table__.c}
 
 
-# class User(MyBase):
-#     __tablename__ = "user"
-#     __table_args__ = (
-#        UniqueConstraint("username", name="user_username"),
-#        UniqueConstraint("email", name="user_email")
-#     )
-
-#     id = Column(Integer, primary_key=True)
-#     username = Column(Text, nullable=False)
-#     email = Column(Text, nullable=False)
-#     hashed_password = Column(Text, nullable=False)
-#     displayname = Column(Text, nullable=True, default="")
-#     first_name = Column(Text, nullable=True, default="")
-#     last_name = Column(Text, nullable=True, default="")
-#     disabled = Column(Boolean, default=False)
-
-
 class User(SQLAlchemyBaseUserTableUUID, MyBase):
     __tablename__ = "user"
     __table_args__ = (
@@ -77,7 +60,6 @@ class ChannelCustom(MyBase):
     is_joined = Column(Boolean, default=False)
 
 
-
 class TgClient(MyBase):
     __tablename__ = "tg_client"
 
@@ -86,9 +68,7 @@ class TgClient(MyBase):
     authenticated = Column(Boolean, default=False)
     api_id = Column(Integer, nullable=True)
     api_hash = Column(Text, nullable=True)
-    # api_id_last_2 = Column(Text, nullable=True)
-    # api_hash_last_2 = Column(Text, nullable=True)
-
+    
 
 class UserClient(MyBase):
     __tablename__ = "user_client"
