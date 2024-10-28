@@ -292,7 +292,7 @@ $('#collection-submit').click(async function(ev){
         
         
       data = await response.json()
-      let el = `<option value=${collectionTitle}>` + collectionTitle + '</option>';
+      let el = `<option value="${collectionTitle}">` + collectionTitle + '</option>';
       $('#collection-titles').append(el);
       $('#collection-submit').prop('disabled', false);
       $(':button').prop('disabled', false);
@@ -400,7 +400,7 @@ $('#delete-collection').click(function(){
   if (confirm(text) == true){
     $('[collection-button]').prop('disabled', true);
     deleteCollection(title);
-    $('#collection-titles').find(`option[value=${title}]`).remove();
+    $('#collection-titles').find(`option[value="${title}"]`).remove();
     if (window.activeCollection == title) {
       window.activeCollection = null;
       $('#active-collection').html("None");
