@@ -66,7 +66,6 @@ async def add_phone_to_user(
             phone_or_bot_token, api_id, api_hash, code, authenticated,
         )
         print("[register]: created")
-        print(client_dict)
         tg_client = {
             "id": client_dict["session_file"],
             "phone": phone_or_bot_token,

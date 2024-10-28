@@ -259,7 +259,6 @@ async def search_and_export_messages_and_media_to_zip_file(
                 yield buffer_chunk
 
             z.close()
-            print('getting end')
             print(seek_pos)
             zip_buffer.seek(seek_pos)
             final_chunk = zip_buffer.read()

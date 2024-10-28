@@ -105,39 +105,3 @@ async def get_registered_clients_of_user(
             status_code=400, detail=str(e)
         )
     
-# @router.put("/api/set_chat_update_task")
-# async def set_chat_update_task_for_user_and_active_client(
-#     request: fastapi.Request,
-#     # collection: str,
-#     client_id: str, period: int=60*60,
-#     db: Session=fastapi.Depends(get_db), 
-#     user=fastapi.Depends(config.settings.MANAGER)
-# ):
-#     tg_client = request.app.state.clients.get(client_id)
-#     if tg_client is None:
-#         print(f"client of {user.username} is None")
-#         tg_client = await telegram.get_authenticated_client(client_id)
-#         if tg_client is None:
-#             raise fastapi.HTTPException(
-#                 status_code=400, detail=f"client {client_id} is no usable")
-#         request.app.state.clients[client_id] = tg_client
-#     user_task = CHAT_UPDATE_TASKS.get(user.id)
-#     if user_task:
-#         CHAT_UPDATE_TASKS[user.id].cancel()
-#         CHAT_UPDATE_TASKS.pop(user.id) 
-#     channel_urls = [x["url"] for x in uu.get_all_channel_urls(db, user.id)]
-#     if not channel_urls:
-#         return {
-#             "status": "fail",
-#             "detail": "no channels present in user account or no registered collection"
-#         }
-#     new_task = asyncio.create_task(update_chats_periodically(
-#         db, tg_client, channel_urls, period))
-#     CHAT_UPDATE_TASKS[user.id] = new_task
-#     return {
-#         "status": "ok"
-#         # "data": CHAT_UPDATE_TASKS.keys()
-#         }
-
-
-
