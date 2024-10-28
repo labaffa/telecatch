@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import ORJSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from tinydb import Query
 from fastapi.middleware.cors import CORSMiddleware
 from teledash.ui.login import ui_login_router
 from teledash.utils import telegram
@@ -43,9 +42,6 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="teledash/static"), name="static")
 
     
-Channel = Query()
-
-
 @app.on_event("startup")
 async def startup_event():
     app.state.clients = {}
