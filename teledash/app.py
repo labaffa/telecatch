@@ -48,41 +48,6 @@ Channel = Query()
 
 @app.on_event("startup")
 async def startup_event():
-    """ TgStatus = Query()
-
-    APP_DATA= config.db.table("telegram")
-    default_item = APP_DATA.search(
-        TgStatus.session == "default"
-    )
-    if not default_item:
-        default_item = {
-            "is_logged_in": None,
-            "phone": None,
-            "session": "default"
-        }
-        APP_DATA.insert(
-            default_item
-        )
-    else:
-        default_item = default_item[0]
-    
-    await tg_client.connect()
-    if await tg_client.is_user_authorized():
-        # APP_DATA["is_logged_in"] = True
-        APP_DATA.update(
-            {"is_logged_in": True},
-            TgStatus.session == "default"
-        )
-        # await tg_client.start()
-        await load_default_channels_in_db(tg_client)
-        asyncio.create_task(update_message_counts(tg_client))
-        asyncio.create_task(update_participant_counts(tg_client))
-    else:
-        APP_DATA.update(
-            {"is_logged_in": False, "phone": None},
-            TgStatus.session == "default"
-        )
- """
     app.state.clients = {}
     app.state.background_tasks = defaultdict(lambda: defaultdict(dict))
     # db = next(get_async_session())
