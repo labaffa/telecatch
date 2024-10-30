@@ -34,6 +34,7 @@ pydantic-settings = "^2.2.1"
 requests = "^2.31.0"
 async-timeout = "^4.0.3"
 stream-zip = "^0.0.81"
+cryptography = "^43.0.3"
 
 
 [tool.poetry.group.dev.dependencies]
