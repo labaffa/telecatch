@@ -28,7 +28,8 @@ class User(SQLAlchemyBaseUserTableUUID, MyBase):
     displayname = Column(Text, nullable=True, default="")
     first_name = Column(Text, nullable=True, default="")
     last_name = Column(Text, nullable=True, default="")
-    
+    salt = Column(Text, nullable=False)
+
 
 class ChannelCommon(MyBase):
     __tablename__ = "channel_common"
@@ -66,7 +67,7 @@ class TgClient(MyBase):
     id = Column(Text, primary_key=True, autoincrement=False)
     phone = Column(Text, nullable=False)
     authenticated = Column(Boolean, default=False)
-    api_id = Column(Integer, nullable=True)
+    api_id = Column(Text, nullable=True)
     api_hash = Column(Text, nullable=True)
     
 

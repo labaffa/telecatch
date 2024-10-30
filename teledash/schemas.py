@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 from dateutil.parser import parse
 import datetime as dt
 from fastapi_users import schemas as fu_schemas
+from bcrypt import gensalt
 
 
 def validate_int(v):
@@ -259,11 +260,11 @@ class UserReadFU(fu_schemas.BaseUser):
 
 class UserCreateFU(fu_schemas.BaseUserCreate):
     username: str
+    salt: str = Field(default_factory=lambda: gensalt().decode())
 
 
 class UserUpdateFU(fu_schemas.BaseUserUpdate):
     username: str
-
 
 class EmailSchema(BaseModel):
     email: List[EmailStr]
