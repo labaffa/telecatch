@@ -19,6 +19,11 @@ from sqlalchemy.ext.asyncio import async_scoped_session
 from typing import List
 from pydantic import BaseModel
 from telethon.utils import parse_username
+from teledash.utils.admin import enc_key_from_cookies
+import logging
+
+
+logger = logging.getLogger('uvicorn.error')
 
 
 collection_router = fastapi.APIRouter()
@@ -84,6 +89,8 @@ async def file_to_list_of_channel_creators(input_file: fastapi.UploadFile):
 
 async def add_collection(db: Session, user: models.User, channels, title):
     invalid_channels = []
+    if not channels:
+        raise ValueError(f'Collection {title} is empty. Insert at least one channel ')
     for channel in channels:
         channel_url = channel["channel_url"]
         channel["channel_url"] = parse_username(channel["channel_url"])[0]
@@ -132,7 +139,8 @@ async def add_collection_of_channels_to_user_account(
     client_id = await uu.get_active_client(db, user.id)
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
-        tg_client = await telegram.get_authenticated_client(db, client_id)
+        enc_key = enc_key_from_cookies(request)
+        tg_client = await telegram.get_authenticated_client(db, client_id, enc_key)
         request.app.state.clients[client_id] = tg_client
     collection_in_db = await uc.get_channel_collection(
         db, user.id, title)
@@ -173,7 +181,8 @@ async def add_collection_of_channels_to_user_account_from_file(
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
         try:
-            tg_client = await telegram.get_authenticated_client(db, client_id)
+            enc_key = enc_key_from_cookies(request)
+            tg_client = await telegram.get_authenticated_client(db, client_id, enc_key)
         except Exception:
             raise fastapi.HTTPException(
                 status_code=400,
@@ -296,9 +305,9 @@ async def update_metadata_of_collections_channel(
     client_id = await uu.get_active_client(db, user.id)
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
-        print(f"client of {user.username} is None")
-        
-        tg_client = await telegram.get_authenticated_client(db, client_id)
+        logger.info(f"client of {user.username} is None")
+        enc_key = enc_key_from_cookies(request)
+        tg_client = await telegram.get_authenticated_client(db, client_id, enc_key)
         if tg_client is None:
             raise fastapi.HTTPException(
                 status_code=400, detail=f"client {client_id} is no usable")
