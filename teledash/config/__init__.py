@@ -1,12 +1,8 @@
 import os
 from inspect import getsourcefile
-from tinydb import TinyDB
 from dotenv import load_dotenv
-from telethon import TelegramClient
-from telethon.errors import SessionPasswordNeededError
 from pydantic_settings import BaseSettings
 from decouple import config
-from fastapi_login import LoginManager
 from enum import Enum
 from fastapi_mail import ConnectionConfig
 
@@ -30,38 +26,9 @@ DEFAULT_CHANNELS = [
      x.strip(" \n") for x in open(os.path.join(SOURCE_FOLDER, "channels.txt"), "r").readlines() if x.strip(" \n")
 ]
 
-db = TinyDB(
-    os.path.join(SESSIONS_FOLDER, 'db.json')
-)
-channels_table = db.table("channels")
 
-
-# Setting configuration values
-API_ID = os.getenv("API_ID")
-API_HASH = os.getenv("API_HASH")
-PHONE = os.getenv("PHONE")
-USERNAME = os.getenv("USERNAME")
-tg_client = TelegramClient(f'{SESSIONS_FOLDER}/{USERNAME}', API_ID, API_HASH)
 AUTH_EXPIRATION_TIME = int(os.getenv("AUTH_EXPIRATION_TIME", 999999999))
 
-
-async def create_client():
-    # Create the client and connect
-    client = TelegramClient(f'{SESSIONS_FOLDER}/{USERNAME}', API_ID, API_HASH)
-
-    await client.start()
-    print("Client created")
-    if await client.is_user_authorized() == False:
-        await client.send_code_request(PHONE)
-        try:
-            await client.sign_in(PHONE, input('Enter the code: '))
-        except SessionPasswordNeededError:
-            await client.sign_in(password=input('Password: '))
-    return client
-
-
-class NotAuthenticatedException(Exception):
-    pass
 
 
 class Settings(BaseSettings):
@@ -72,18 +39,11 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = (60 * 24 * 365) * 10  # 10 years
     REFRESH_TOKEN_EXPIRE_MINUTES: int = (60 * 24 * 365) * 10 
+    DATA_SECRET_KEY: str = config("DATA_SECRET_KEY", cast=str)
     # BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
     #     "http://localhost:3000"
     # ]
-    PROJECT_NAME: str = "TELEDASH"
-    # MANAGER = LoginManager(
-    #     config("JWT_SECRET_KEY", cast=str),
-    #     '/login', 
-    #     use_cookie=True, 
-    #     custom_exception=NotAuthenticatedException
-    # )
-    
-    
+    PROJECT_NAME: str = "TeleCatch"
     # Database
     # MONGO_CONNECTION_STRING: str = config("MONGO_CONNECTION_STRING", cast=str)
     
