@@ -8,6 +8,13 @@ from teledash.db.db_setup import get_async_session
 from teledash.utils.db import channel as uc
 from teledash.utils.users import active_user
 from teledash.db import models
+import jwt
+from teledash.config import settings
+from teledash.utils.admin import enc_key_from_cookies, decrypt_data
+import logging
+
+
+logger = logging.getLogger('uvicorn.error')
 
 
 router = APIRouter()
@@ -21,11 +28,19 @@ async def page_to_manage_user_clients(
     user: models.User = Depends(active_user),
     db: Session = Depends(get_async_session)
 ):
+    enc_key = enc_key_from_cookies(request)
     user_collections = await uc.get_channel_collection_titles_of_user(db, user.id)
     active_collection = await uu.get_active_collection(db, user.id)
     if active_collection not in user_collections:  # if collection deleted
         active_collection = None
     clients = await ut.get_user_clients(db, user)
+    clients = [dict(x) for x in clients]
+    for i in range(len(clients)):
+        try:
+            clients[i]["phone"] = decrypt_data(enc_key, bytes.fromhex(clients[i]["phone"]))
+        except Exception as e:
+            logger.info(str(e))
+            pass
     active_client_id = await uu.get_active_client(db, user.id)
     active_client = next((x for x in clients if x["client_id"] == active_client_id), None)
     if active_client is None:

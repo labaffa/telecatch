@@ -8,6 +8,7 @@ from teledash.utils.db import user as uu
 from teledash.utils.db import channel as uc
 from teledash.utils.users import active_user
 from teledash.db import models
+from teledash.utils.admin import enc_key_from_cookies, decrypt_data
 
 
 router = APIRouter()
@@ -21,6 +22,7 @@ async def page_to_manage_user_clients(
     user: models.User = Depends(active_user),
     db: Session = Depends(get_async_session)
 ):
+    enc_key = enc_key_from_cookies(request)
     user_collections = await uc.get_channel_collection_titles_of_user(db, user.id)
     active_collection = await uu.get_active_collection(db, user.id)
     if active_collection not in user_collections:  # if collection deleted
@@ -33,10 +35,13 @@ async def page_to_manage_user_clients(
     )
     if active_client is None:
         active_client = {"client_id": None, "phone": None, "authenticated": None}
+    else:
+        active_client = dict(active_client)
+        active_client["phone"] = decrypt_data(enc_key, bytes.fromhex(active_client["phone"]))
     data = {
         "request": request,
         "user": user,
-        "active_client": dict(active_client),
+        "active_client": active_client,
         "active_collection": active_collection
     }
     return templates.TemplateResponse(
