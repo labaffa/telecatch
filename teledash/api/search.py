@@ -28,6 +28,7 @@ import zipfile
 from stat import S_IFREG
 from stream_zip import ZIP_32, async_stream_zip
 import datetime as dt
+from teledash.utils.admin import enc_key_from_cookies
 
 
 MAX_MSG_CHUNK_SIZE = 1000
@@ -101,7 +102,8 @@ async def read_search_channel(
         )
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:  # I believe we should test if tg_client works 
-        tg_client = await telegram.get_authenticated_client(db, client_id)
+        enc_key = enc_key_from_cookies(request)
+        tg_client = await telegram.get_authenticated_client(db, client_id, enc_key)
         request.app.state.clients[client_id] = tg_client
     if not channel_urls:
         raise HTTPException(
@@ -180,7 +182,8 @@ async def search_and_export_messages_and_media_to_zip_file(
     
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
-        tg_client = await telegram.get_authenticated_client(db, client_id)
+        enc_key = enc_key_from_cookies(request)
+        tg_client = await telegram.get_authenticated_client(db, client_id, enc_key)
         request.app.state.clients[client_id] = tg_client
     if not channel_urls:
         raise HTTPException(
@@ -248,7 +251,6 @@ async def search_and_export_messages_and_media_to_zip_file(
                     with z.open(f'media/{item["filename"]}', mode='w') as mediafile:
                         mediafile.write(item["data"])
                 elif item["type"] == "messages":
-                    print('yield messages')
                     df = pd.DataFrame(item["data"], columns=tsv_columns)
                     with z.open(f'messages/{item["filename"]}', mode='w') as mediafile:
                         mediafile.write(df.to_csv(sep="\t", index=False).encode())
@@ -259,10 +261,8 @@ async def search_and_export_messages_and_media_to_zip_file(
                 yield buffer_chunk
 
             z.close()
-            print(seek_pos)
             zip_buffer.seek(seek_pos)
             final_chunk = zip_buffer.read()
-            # print(final_chunk)
             yield final_chunk
 
 
@@ -302,7 +302,6 @@ async def search_and_export_messages_and_media_to_zip_file(
                 writer.writeheader()
                 yield stream.getvalue()
                 async for item in results:
-                    print(item["id"])
                     stream.truncate(0)
                     stream.seek(0)
                     writer.writerow(item)
@@ -365,7 +364,8 @@ async def read_sample_from_channelsl(
         )
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:  # I believe we should test if tg_client works 
-        tg_client = await telegram.get_authenticated_client(db, client_id)
+        enc_key = enc_key_from_cookies(request)
+        tg_client = await telegram.get_authenticated_client(db, client_id, enc_key)
         request.app.state.clients[client_id] = tg_client
     if not channel_urls:
         raise HTTPException(
