@@ -69,13 +69,21 @@ $('.form').find('input, textarea').on('keyup blur focus', function (e) {
         console.log("Error: ", err)
       })
   };
-
   
+  function sleep(milliseconds) {
+    const start = new Date().getTime();
+    while (new Date().getTime() - start < milliseconds) {
+        // Loop vuoto che blocca l'esecuzione
+    }
+}
+
+
   const loginSubmit = document.getElementById("loginSubmit");
   loginSubmit.onclick = (ev) => {
     ev.preventDefault();
     const loginForm = document.getElementById("loginForm")
     const data = new FormData(loginForm)
+    
     fetch("/api/v1/cookie/login", {
         method: "POST",
         body: data
