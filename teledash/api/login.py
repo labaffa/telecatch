@@ -133,12 +133,7 @@ async def add_phone_to_user(
         session_id = create_session_id(phone, api_id, api_hash)
         client_id = session_id + '.session'
         
-        """ TgClient = Query()
-        UserTg = Query()
-        client_in_db = config.db.table("tg_clients").search(
-            (TgClient.client_id == client_id)
-        )
-        client_in_db = client_in_db[0] if client_in_db else {} """
+        
         client_in_db = await ut.get_client_meta(db, client_id)
         client_in_db = client_in_db.to_dict() if client_in_db else {}
         authenticated = client_in_db.get("authenticated", False)
