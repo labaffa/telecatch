@@ -3,7 +3,7 @@ from fastapi import HTTPException, APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from teledash.channel_messages import search_all_channels, \
+from teledash.utils.channel_messages import search_all_channels, \
     search_all_channels_generator, download_all_channels_media, sample_from_all_channels
 import base64
 from typing import Union

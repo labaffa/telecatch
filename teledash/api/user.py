@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from teledash.db.db_setup import get_db, get_async_session
 from teledash.utils.db import user as uu
 from teledash.utils.db import channel as uc
-from teledash.channel_messages import update_chats_periodically
+from teledash.utils.channel_messages import update_chats_periodically
 from teledash.db import models as db_models
 from teledash.utils.db import tg_client as ut
 import asyncio

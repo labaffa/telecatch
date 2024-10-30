@@ -18,9 +18,11 @@ from teledash.utils import channels as util_channels
 from typing import Iterable
 from async_timeout import timeout
 import math
+import logging
 
 
-Channel = Query()
+logger = logging.getLogger('uvicorn.error')
+
 
 
 # some functions to parse json date
@@ -49,8 +51,7 @@ def get_author(message):
         try:
             author_id = message["peer_id"]["channel_id"]
         except Exception as e:
-            print("Problem getting author from message: ")
-            print(message)
+            logger.info(f'Problems getting author from message: {message}')
             author_type = None
             author_id = None
     return {
@@ -94,7 +95,7 @@ async def search_channel_raw(client, channel, search):
     total_messages = 0
     total_count_limit = 0
     while True:
-        print("Current Offset ID is:", offset_id, "; Total Messages:", total_messages)
+        logger.info(f'Current Offset ID is: {offset_id}; Total Messages: {total_messages}')
         history = await client(SearchRequest(
             peer=channel,
             q=search,
@@ -172,26 +173,24 @@ async def search_single_channel_batch(
         message_d["language"] = channel_info.get("language")
         message_d["author"] = get_author(message_d)
         if message_d["author"]["author_type"] is None:  # message not valid
-            print("Unable to get author, message might be broken. Skipping: ")
-            print(message_d)
+            logger.info(f'Unable to get author, message might be broken. Skipping: {message_d}')
             continue
         if message_d["fwd_from"]:
             fwd_author = get_author(message_d["fwd_from"])
             if fwd_author["author_type"] is None:
-                print("FORWARDED MESSAGE MISSING AUTHOR:")
-                print(message_d)
+                logger.info(f'Forwarded message is missing author: {message_d}')
                 fwd_author["author_id"] = 0
             message_d["fwd_from_author"] = fwd_author
         batch_messages.append(message_d)
         if len(batch_messages) >= 200:
-            print("Enriching")
+            logger.info('Enriching')
             batch_records = await enrich_and_parse_messages(
                 db, client, entity, batch_messages, enrich=enrich_messages
             )
             
             all_messages.extend(batch_records)
             batch_messages = []
-    print("Enriching remaining messages")
+    logger.info('Enriching remaining messages')
     batch_records = await enrich_and_parse_messages(
         db, client, entity, batch_messages, enrich=enrich_messages
     )
@@ -245,19 +244,19 @@ async def search_all_channels(
         if (chat_type is not None) and (channel_info["type"] != chat_type):
             continue
         if not channel_info["id"]:
-            print(f'{channel_info["url"]} has not id and access_hash yet. Retrieving entity info from Telegram')
+            logger.info(f'{channel_info["url"]} has not id and access_hash yet. Retrieving entity info from Telegram')
             try:
                 common_channel_info = await util_channels.build_chat_info(
                     client, channel_info["url"]
                 )
                 channel_info.update(**common_channel_info)
-                print('Inserting entity info and metadata in db')
+                logger.info('Inserting entity info and metadata in db')
                 await uc.upsert_channel_common(db, schemas.ChannelCommon(**channel_info))
             except Exception as e:
                 # IMPORTANT: should we skip here?
-                print("Not able to get and save chat info because of error: " + str(e))
+                logger.info(f'Not able to get and save chat info because of error: {str(e)}')
         try: 
-            print("[search_all_channels]: ", channel_info)
+            logger.info(f'Searching: {channel_info}')
             channel_msg = await search_single_channel_batch(
                 db,
                 client, 
@@ -270,7 +269,7 @@ async def search_all_channels(
                 reverse
                 )
         except Exception as e:
-            print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
+            logger.info(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
             channel_msg = []
         total_msg_count += len(channel_msg)
         offset_id = 0
@@ -287,9 +286,10 @@ async def enrich_with_author_of_replies(client, entity, messages):
         m["reply_to"]["reply_to_msg_id"]
         for m in messages if m["reply_to"]
     ]))
-    print("getting replied")
+    
+    logger.info("Getting replied")
     replied_messages = await client.get_messages(entity, ids=reply_ids)
-    print("received")
+    logger.info("Received replied")
     replied_messages_by_id = {
         m.id: m.to_dict() for m in replied_messages if m is not None
     }
@@ -314,7 +314,7 @@ async def enrich_and_parse_messages(db, client, entity, messages, enrich=True):
         )
         enriched_messages = enrich_messages_with_entities(parsed_batch, enriched_entities)
     except Exception as e:
-        print("error in enrichment:", str(e))
+        logger.info(f'Error in enrichment due to: {str(e)}')
         parsed_batch = [parse_raw_message(m) for m in messages]
         enriched_messages = list(parsed_batch)
     return enriched_messages
@@ -359,16 +359,16 @@ async def search_all_channels_generator(
         if (chat_type is not None) and (channel_info["type"] != chat_type):
             continue
         if not channel_info["id"]:
-            print(f'{channel_info["url"]} has not id and access_hash yet. Retrieving entity info from Telegram')
+            logger.info(f'{channel_info["url"]} has not id and access_hash yet. Retrieving entity info from Telegram')
             try:
                 common_channel_info = await util_channels.build_chat_info(
                     client, channel_info["url"]
                 )
                 channel_info.update(**common_channel_info)
-                print('Inserting entity info and metadata in db')
+                logger.info('Inserting entity info and metadata in db')
                 await uc.upsert_channel_common(db, schemas.ChannelCommon(**channel_info))
             except Exception as e:
-                print("Not able to get and save chat info because of error: " + str(e))
+                logger.info(f'Not able to get and save chat info because of error: {str(e)}')
         try:
 
             
@@ -418,36 +418,30 @@ async def search_all_channels_generator(
                 message_d.update(**media_metadata)
                 batch_messages.append(message_d)
                 if len(batch_messages) >= 200:  # move to config, it is taken from Telethon get_entity
-                    print("Enriching")
+                    logger.info("Enriching")
                     enriched_messages = await enrich_and_parse_messages(
                         db, client, entity, batch_messages, enrich=enrich_messages
                     )
                     batch_messages = []
                     for msg in enriched_messages:
                         yield msg
-            # # enrich and yield remaining messages
-            # print("Enriching remaining messages")
-            # enriched_messages = await enrich_and_parse_messages(
-            #     db, client, entity, batch_messages
-            # )
-            # for msg in enriched_messages:
-            #     yield msg
+            
         except Exception as e:
-            print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
+            logger.info(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
         offset_id = 0
         if (limit is not None):
             channel_limit = limit - total_msg_count
             if (total_msg_count >= limit):
                 break
     try:
-        print("Enriching remaining messages")
+        logger.info("Enriching remaining messages")
         enriched_messages = await enrich_and_parse_messages(
             db, client, entity, batch_messages, enrich=enrich_messages
         )
         for msg in enriched_messages:
             yield msg
     except Exception as e:
-        print(f'Problem enriching and yielding last chunk of messages from channel {channel_info["url"]} due to: {str(e)}')
+        logger.info(f'Problem enriching and yielding last chunk of messages from channel {channel_info["url"]} due to: {str(e)}')
 
 
 async def download_all_channels_media(
@@ -492,7 +486,7 @@ async def download_all_channels_media(
         all_channels, key=lambda x: channel_urls.index(x["url"].strip().lower())
     )
     if not all_channels:
-        print(f'No channels found in user account from: {channel_urls}')
+        logger.info(f'No channels found in user account from: {channel_urls}')
         return 
     total_msg_count = 0
     channel_limit = limit
@@ -504,16 +498,16 @@ async def download_all_channels_media(
         if (chat_type is not None) and (channel_info["type"] != chat_type):
             continue
         if not channel_info["id"]:
-            print(f'{channel_info["url"]} has not id and access_hash yet. Retriving entity info from Telegram')
+            logger.info(f'{channel_info["url"]} has not id and access_hash yet. Retriving entity info from Telegram')
             try:
                 common_channel_info = await util_channels.build_chat_info(
                     client, channel_info["url"]
                 )
-                print('Inserting entity info and metadata in db')
+                logger.info('Inserting entity info and metadata in db')
                 await uc.upsert_channel_common(db, schemas.ChannelCommon(**channel_info))
                 channel_info.update(**common_channel_info)
             except Exception as e:
-                print("Not able to get and save chat info because of error: " + str(e))
+                logger.info(f'Not able to get and save chat info because of error: {str(e)}')
         try:
             entity = await util_channels.get_input_entity(client, channel_info)
             # this is added because telegram api don't seem to work with offset_date and reverse
@@ -557,7 +551,7 @@ async def download_all_channels_media(
                             media_buffer = io.BytesIO()
                             fname = f'{message_d["date"].strftime("%Y-%m")}/{message_d["peer_id"]["channel_id"]}_{message_d["id"]}.png'
                             media_metadata["media_filename"] = fname
-                            print(f"[search_single_batch]: downloading {media_metadata['media_type']} media of {channel_info['url']}: {message_d['id']}")
+                            logger.info(f"[search_single_batch]: downloading {media_metadata['media_type']} media of {channel_info['url']}: {message_d['id']}")
                             async with timeout(5):
                                 await message.download_media(media_buffer)
                             yield {
@@ -566,7 +560,6 @@ async def download_all_channels_media(
                                 "filename": media_metadata["media_filename"]
                             }
                         except Exception as e:
-                            print(e)
                             media_metadata["media_filename"] = None
                 message_d["author"] = get_author(message_d)
                 if message_d["fwd_from"]:
@@ -577,7 +570,7 @@ async def download_all_channels_media(
                 chunk_full = (total_msg_count % messages_chunk_size) == 0
                 messages_to_enrich.append(message_d)
                 if (len(messages_to_enrich) >= 200) or chunk_full:  # move to config, it is taken from Telethon get_entity
-                    print("Enriching")
+                    logger.info("Enriching")
                     enriched_messages = await enrich_and_parse_messages(
                         db, client, entity, messages_to_enrich, enrich=enrich_messages
                     )
@@ -592,14 +585,14 @@ async def download_all_channels_media(
                     }
                     messages_chunk = []
         except Exception as e:
-            print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
+            logger.info(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
         offset_id = 0
         if (limit is not None):
             channel_limit = limit - total_msg_count
             if (total_msg_count >= limit):
                 break
     try:
-        print("Enriching remaining messages")
+        logger.info("Enriching remaining messages")
         enriched_messages = await enrich_and_parse_messages(
             db, client, entity, messages_to_enrich, enrich=enrich_messages
         )
@@ -611,70 +604,8 @@ async def download_all_channels_media(
             "filename": f"{chunks_count}.tsv"
         }
     except Exception as e:
-        print(f'Problem enriching and yielding last chunk of messages from channel {channel_info["url"]} due to: {str(e)}')
+        logger.info(f'Problem enriching and yielding last chunk of messages from channel {channel_info["url"]} due to: {str(e)}')
         
-
-async def join_channel(tg_client, channel: dict):
-    """
-    channel must be a dict with, at least, id and access_hash
-    keys of a channel
-
-    """
-    entity = await util_channels.get_input_entity(tg_client, channel)
-    await tg_client(
-        functions.channels.JoinChannelRequest(entity)
-    )
-    config.db.table("channels").update(
-        {"is_joined": True}, 
-        Channel.id == int(channel["id"])
-    )
-    return config.db.table("channels").search(
-        Channel.id == int(channel["id"]))[0]
-
-
-async def leave_channel(tg_client, channel: dict):
-    entity = await util_channels.get_input_entity(tg_client, channel)
-    await tg_client(
-        functions.channels.LeaveChannelRequest(
-            entity
-    ))
-    config.db.table("channels").update(
-        {"is_joined": False}, 
-        Channel.id == int(channel["id"])
-    )
-    return config.db.table("channels").search(
-        Channel.id == int(channel["id"]))[0]
-
-
-async def load_default_channels_in_db(
-    client, channel_id_list=config.DEFAULT_CHANNELS
-):
-    """
-    TODO: deal with the scenario in which a default channel
-    is deleted by an user from the webapp. in this case, since
-    the channel is still in the db (but with is_joined == True),
-    the channel won't be part of the joined channel at a new 
-    startup of the app. DECIDE what to do with this
-
-
-    """
-    for channel in channel_id_list:
-        try:
-            channel_info = config.db.table("channels").search(
-            Channel.identifier == channel)[0]
-            print(f"{channel} already present in db")
-        except IndexError:
-            channel_info = await util_channels.build_chat_info(
-                client, channel)
-            config.db.table("channels").insert(channel_info)
-            input_entity_info = {
-                "id": int(channel_info["id"]),
-                "access_hash": channel_info["access_hash"]
-            }
-            await join_channel(client, input_entity_info)
-            print(f'{channel} inserted in db')
-            await asyncio.sleep(0.5)
-
 
 TIME_INTERVAL_IN_SEC = 60*60
 
@@ -685,24 +616,23 @@ async def update_chats_periodically(
     while True:
         client_is_usable = await ut.client_is_logged_and_usable(client)
         if not client_is_usable:
-            print(f"[update_chats_periodically]: client is not usable")
+            logger.info(f"[update_chats_periodically]: client is not usable")
             await asyncio.sleep(period)
             continue
         for url in channel_urls:
-            print(f'Updating: {url}')
+            logger.info(f'Updating: {url}')
             channel = uc.get_channel_by_url(db, url)  # it should return dict or None
-            print(f'Channel in db: {channel}')
+            logger.info(f'Channel in db: {channel}')
             if channel:  # this function works just on already initiated channels (url in db)
-                print(channel)
                 if not channel["id"]:
-                    print(f'{url} has not id and access_hash yet. Trying to retrieve entity info from Telegram')
+                    logger.info(f'{url} has not id and access_hash yet. Trying to retrieve entity info from Telegram')
                     try:
                         channel = await util_channels.build_chat_info(client, url)
-                        print('Inserting entity info and metadata in db')
+                        logger.info('Inserting entity info and metadata in db')
                         uc.upsert_channel_common(db, schemas.ChannelCommon(**channel))
                     except Exception as e:
-                        print("Not able to get and save chat info because of error: " + str(e))
-                        print(f'Skipping {url}')
+                        logger.info(f'Not able to get and save chat info because of error: {str(e)}')
+                        logger.info(f'Skipping {url}')
                         await asyncio.sleep(sleep_for_requests)
                         continue  # try next channel in list
             if not channel:  # should never happen this
@@ -727,51 +657,6 @@ async def update_chats_periodically(
             await asyncio.sleep(sleep_for_requests)
         await asyncio.sleep(period)
 
-
-async def update_message_counts(client):
-    while True:
-        all_channels = config.db.table("channels").all()
-        
-        for channel in all_channels:
-            if not channel["is_joined"]:
-                continue
-            print(f'Updating message count of: {channel}')
-            input_entity_info = {
-                "id": int(channel["id"]),
-                "access_hash": channel["access_hash"]
-            }
-            count = await util_channels.count_peer_messages(
-                client, input_entity_info
-            )
-            config.db.table("channels").update(
-                {"count": count["msg_count"]}, 
-                Channel.id == int(channel["id"])
-            )
-            await asyncio.sleep(1)
-        await asyncio.sleep(TIME_INTERVAL_IN_SEC)
-
-
-async def update_participant_counts(client):
-    while True:
-        all_channels = config.db.table("channels").all()
-        for channel in all_channels:
-            if not channel["is_joined"]:
-                continue
-            print(f'Updating participants count of: {channel}')
-            input_entity_info = {
-                "id": int(channel["id"]),
-                "access_hash": channel["access_hash"]
-            }
-            info = await util_channels.get_channel_or_megagroup(
-                client, input_entity_info
-                )
-            pts_count = info["full_chat"]["participants_count"]
-            config.db.table("channels").update(
-                {"participants_counts": pts_count}, 
-                Channel.id == int(channel["id"])
-            )
-            await asyncio.sleep(1)
-        await asyncio.sleep(TIME_INTERVAL_IN_SEC)
 
 
 def parse_entity(entity_dict):
@@ -832,8 +717,6 @@ async def enrich_entities_of_messages(
     all_entities = authors + replies + forwards
 
     # TODO: consider working just with ID when finding entitites to search on Telegram
-    # print(all_entities)
-    # print(entities_to_find)
     entities_to_find = list(
         map(dict, set(tuple(sorted(sub.items())) 
         for sub in all_entities if all(v is not None for v in sub.values())))
@@ -855,7 +738,7 @@ async def enrich_entities_of_messages(
     for e in entities_to_find_not_in_db:
         t = e["entity_type"]
         if t not in e_groups:
-            print("Unknown entity type: ", t)
+            logger.info(f'Unknown entity type: {t}')
             continue
         e_groups[t].append(e)
     entities_from_telegram = []
@@ -866,9 +749,9 @@ async def enrich_entities_of_messages(
                 parse_entity(x.to_dict()) for x in group_from_telegram
             ])
         except Exception as e:
-            print("Problems getting entities of type: ", t)
+            logger.info(f'Problems getting entities of type: {t}')
             ids = [e["id"] for e in group]
-            print("One of the following id is giving problem: ", ids)
+            logger.info(f'One of the following id is giving problems: {ids}')
     await uc.insert_entities(db, entities_from_telegram)
     return entities_in_db + entities_from_telegram
 
@@ -908,7 +791,7 @@ async def search_single_channel_batch_trycatch(
         try:
             entity = await util_channels.get_input_entity(client, channel_info)
         except Exception as e:
-            print(f'{channel_info["url"]} might be not present on Telegram anymore. Skipping')
+            logger.info(f'{channel_info["url"]} might be not present on Telegram anymore. Skipping')
             return []
         # this is added because telegram api don't seem to work with offset_date and reverse
         # but it's not optimal at all, when reverse and start_date. we could do:
@@ -946,35 +829,23 @@ async def search_single_channel_batch_trycatch(
             message_d["language"] = channel_info.get("language")
             message_d["author"] = get_author(message_d)
             if message_d["author"]["author_type"] is None:  # message not valid
-                print("Unable to get author, message might be broken. Skipping: ")
-                print(message_d)
+                logger.info(f'Unable to get author, message might be broken. Skipping: {message_d}')
                 continue
             if message_d["fwd_from"]:
                 fwd_author = get_author(message_d["fwd_from"])
                 if fwd_author["author_type"] is None:
-                    print("FORWARDED MESSAGE MISSING AUTHOR:")
-                    print(message_d)
+                    logger.info(f'Forwarded message is missing author: {message_d}')
                     fwd_author["author_id"] = 0
                 message_d["fwd_from_author"] = fwd_author
             batch_messages.append(message_d)
             if len(batch_messages) >= 200:
-                # print("Enriching")
-                # batch_records = await enrich_and_parse_messages(
-                #     db, client, entity, batch_messages
-                # )
                 batch_records = [parse_raw_message(m) for m in batch_messages]
                 all_messages.extend(batch_records)
                 batch_messages = []
-        # print("Enriching remaining messages")
-        # batch_records = await enrich_and_parse_messages(
-        #     db, client, entity, batch_messages
-        # )
-
-        # batch_records = batch_messages
         batch_records = [parse_raw_message(m) for m in batch_messages]
         all_messages.extend(batch_records)
     except Exception as e:
-        print(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
+        logger.info(f'Problem getting messages from channel {channel_info["url"]} due to: {str(e)}')
         all_messages = []
     return all_messages
 
@@ -1017,16 +888,16 @@ async def sample_from_all_channels(
         if (chat_type is not None) and (channel_info["type"] != chat_type):
             continue
         if not channel_info["id"]:
-            print(f'{channel_info["url"]} has not id and access_hash yet. Retrieving entity info from Telegram')
+            logger.info(f'{channel_info["url"]} has not id and access_hash yet. Retrieving entity info from Telegram')
             try:
                 common_channel_info = await util_channels.build_chat_info(
                     client, channel_info["url"]
                 )
                 channel_info.update(**common_channel_info)
-                print('Inserting entity info and metadata in db')
+                logger.info('Inserting entity info and metadata in db')
                 await uc.upsert_channel_common(db, schemas.ChannelCommon(**channel_info))
             except Exception as e:
-                print("Not able to get and save chat info because of error: " + str(e))
+                logger.info(f'Not able to get and save chat info because of error: {str(e)}')
          
         coros.append(search_single_channel_batch_trycatch(
             db,

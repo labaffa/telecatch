@@ -9,7 +9,7 @@ from teledash import config
 from tinydb import Query
 from fastapi.templating import Jinja2Templates
 import asyncio
-from teledash.channel_messages import load_default_channels_in_db, \
+from teledash.utils.channel_messages import load_default_channels_in_db, \
     update_message_counts, update_participant_counts
 
 
