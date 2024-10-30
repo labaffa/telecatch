@@ -13,6 +13,11 @@ from teledash.utils.db import tg_client as ut
 from teledash.utils.db import channel as uc
 from sqlalchemy.orm import Session
 import re
+from teledash.utils.admin import decrypt_data
+import logging
+
+
+logger = logging.getLogger('uvicorn.error')
 
 
 class NeedsCodeException(Exception):
@@ -88,7 +93,7 @@ async def create_bot_client(
             "session_file": session_file
         }
     except Exception as e:
-        print(f"problem authenticating bot due to {str(e)}")
+        logger.info(f"problem authenticating bot due to {str(e)}")
         out = {
             "needs_code": False,
             "client": None,
@@ -136,7 +141,7 @@ async def create_client(
             # session is no longer useable, delete file so user will be asked
             # for security code again. The RuntimeError is raised by
             # `cancel_start()`
-            print("[create client]: error on using authenticated client")
+            logger.info("[create client]: error on using authenticated client")
             out = {
                 "needs_code": True,
                 "client": None,
@@ -150,7 +155,7 @@ async def create_client(
     else:
         
         try:
-            print("[create client]: first login")
+            logger.info("[create client]: first login")
             await first_login(
                 phone, api_id, api_hash, code=code
             )
@@ -205,8 +210,7 @@ async def first_login(phone, api_id, api_hash, code=None):
             # A code was sent to the given phone number
             needs_code = True
     except Exception as e:
-        print("Error: ", str(e))
-        print("[first login]: deleting and creating new session file")
+        logger.info(f'Error: {str(e)}. [first login]: Deleting and creating new session file.')
 
         if session_path.exists():
             session_path.unlink()
@@ -257,7 +261,7 @@ async def started_client(session_path, api_id, api_hash):
     except Exception as e:
         loop.stop()
         loop.close()
-        print(str(e))
+        logger.info(str(e))
 
 
 async def client_is_logged_and_usable(client_instance):
@@ -267,19 +271,19 @@ async def client_is_logged_and_usable(client_instance):
         if (await client_instance.is_user_authorized()):
             response = True
     except Exception as e:
-        print("[client_is_logged_and_usable]: ", str(e))
+        logger.info(f'[client_is_logged_and_usable]: {str(e)}')
     return response
 
 
 async def get_authenticated_client(
-    db: Session, client_id: str
+    db: Session, client_id: str, enc_key = None
 ):
     
     """ TODO: remove httpexception from non fastapi endpoints """
     session_path = Path(config.SESSIONS_FOLDER).joinpath(
         client_id
     )
-    print("[get_authenticated]: ", client_id)
+    logger.info(f'[get_authenticated]: Getting client with id: {client_id}')
     client_in_db = await ut.get_client_meta(db, client_id)
     if not client_in_db:
         raise fastapi.HTTPException(
@@ -293,16 +297,18 @@ async def get_authenticated_client(
             detail="client not authenticated"
         )
     try:
+        api_id = int(decrypt_data(enc_key, bytes.fromhex(client_in_db["api_id"])))
+        api_hash = decrypt_data(enc_key, bytes.fromhex(client_in_db["api_hash"]))
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         client = TelegramClient(
             str(session_path), 
-            client_in_db["api_id"], 
-            client_in_db["api_hash"], 
+            api_id, 
+            api_hash, 
             loop=loop
         )
         is_usable = await client_is_logged_and_usable(client)
-        print("[get_authenticated]: ", is_usable)
+        logger.info(f'Client with id {client_id} is usable: {str(is_usable)}')
         if not is_usable:
             return None
         await client.start()
@@ -320,6 +326,7 @@ async def get_authenticated_client(
     except Exception as e:
         # loop.close()
         # it never enters here because a try except is inside started_client
+        
         raise fastapi.HTTPException(
             status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
@@ -327,21 +334,5 @@ async def get_authenticated_client(
     return client
 
     
-# async def client_is_logged_and_usable(client_id: str, api_id: int, api_hash: str):
-#     client_works = False
-#     session_path = Path(config.SESSIONS_FOLDER).joinpath(
-#         client_id
-#     )
-#     try:
-#         client = TelegramClient(
-#             session_path.as_posix(), int(api_id), api_hash
-#         )
-#         await client.connect()
-#         if await client.is_user_authorized():
-#             client_works = True
-#         client.disconnect()
-#     except Exception as e:
-#         print(str(e))
-#     return client_works
 
 
