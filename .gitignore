@@ -89,3 +89,7 @@ node_modules/
 # telethon sessions and db
 teledash/sessions/*
 !teledash/sessions/.gitkeep
+
+
+teledash/data/downloadables/*
+!teledash/data/downloadables/.gitkeep
