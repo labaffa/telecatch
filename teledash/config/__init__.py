@@ -22,13 +22,8 @@ SQLALCHEMY_DATABASE_URL = (
     f'{os.path.join(SESSIONS_FOLDER, "teledash.db")}'
 )
 
-DEFAULT_CHANNELS = [
-     x.strip(" \n") for x in open(os.path.join(SOURCE_FOLDER, "channels.txt"), "r").readlines() if x.strip(" \n")
-]
-
 
 AUTH_EXPIRATION_TIME = int(os.getenv("AUTH_EXPIRATION_TIME", 999999999))
-
 
 
 class Settings(BaseSettings):
@@ -40,20 +35,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = (60 * 24 * 365) * 10  # 10 years
     REFRESH_TOKEN_EXPIRE_MINUTES: int = (60 * 24 * 365) * 10 
     DATA_SECRET_KEY: str = config("DATA_SECRET_KEY", cast=str)
-    # BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
-    #     "http://localhost:3000"
-    # ]
     PROJECT_NAME: str = "TeleCatch"
-    # Database
-    # MONGO_CONNECTION_STRING: str = config("MONGO_CONNECTION_STRING", cast=str)
     
     class Config:
         case_sensitive = True
         
 
-
 settings = Settings()
     
+
 TELEGRAM_MEDIA_MAP = {
     "MessageMediaWebPage": "webpage",
     # "MessageMediaDocument": "document",
@@ -66,16 +56,18 @@ class EntityType(Enum):
     channel = 2
     chat = 3
 
-
-mail_connection_config = ConnectionConfig(
-    MAIL_USERNAME = "telecatch.api@gmail.com",
-    MAIL_PASSWORD = "sztf wsgs sfbd vnpn",
-    MAIL_FROM = "telecatch.api@gmail.com",
-    MAIL_PORT = 587,
-    MAIL_SERVER = "smtp.gmail.com",
-    MAIL_FROM_NAME="TeleCatch",
-    MAIL_STARTTLS = True,
-    MAIL_SSL_TLS = False,
-    USE_CREDENTIALS = True,
-    # VALIDATE_CERTS = False
-)
+try:
+    mail_connection_config = ConnectionConfig(
+        MAIL_USERNAME = os.getenv("MAIL_USERNAME"),
+        MAIL_PASSWORD = os.getenv("MAIL_PASSWORD"),
+        MAIL_FROM = os.getenv("MAIL_USERNAME"),
+        MAIL_PORT = os.getenv("MAIL_PORT", 587),
+        MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com"),
+        MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "TeleCatch"),
+        MAIL_STARTTLS = True,
+        MAIL_SSL_TLS = False,
+        USE_CREDENTIALS = True,
+        # VALIDATE_CERTS = False
+    )
+except Exception as e:
+    raise ValueError(f"Mail configuration is missing mandatory fields. Please set env variables: {str(e)}")
