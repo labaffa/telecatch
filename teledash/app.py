@@ -21,13 +21,13 @@ logger = logging.getLogger('uvicorn.error')
 
 
 app = FastAPI(
-    title="TeleDash",
+    title="TeleCatch",
     description="Extract useful info from Telegram channels and groups",
     version="0.0.1",
-    contact={
-        "name": "Giosue",
-        "email": "giosue.ruscica@gmail.com",
-    },
+    # contact={
+    #     "name": "Giosue",
+    #     "email": "giosue.ruscica@gmail.com",
+    # },
     license_info={
         "name": "MIT",
     },
