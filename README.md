@@ -82,17 +82,30 @@ If you prefer to run TeleCatch in a Docker container, follow these steps with [d
 
 Build the Docker image:
 
+
 ```bash
 
 docker build -t telecatch .
 ```
+
+
 Create a `.env` file containing all the required variables above mentioned and run the Docker container:
+
 
 ```bash
 docker run --env-file .env -p 8000:8000 telecatch
 ```
 
-With Docker, you don't need to install Python or dependencies directly on your host machine. Environment variables from the .env file will automatically configure the container.
+
+With the previous command, app's data (users, Telegram clients info, metadata, etc.) stay at *container's level*, which means that any new `docker run` loses track of all the data.  
+To make data persistent across different *containers*, a local folder of the host machine can be [mounted](https://docs.docker.com/engine/storage/bind-mounts/). 
+
+The new command will be then:
+```bash
+docker run --env-file .env --mount type=bind,source=/absolute/host/path/for/app/data,target=/app/teledash/sessions -p 8000:8000 telecatch
+```
+The app will be accessible at `http://0.0.0.0:8000`.
+
 
 ## Usage
 
