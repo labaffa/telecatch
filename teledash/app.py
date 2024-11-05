@@ -15,9 +15,54 @@ from teledash.utils.users import auth_backend, fastapi_users, cookie_auth_backen
 from teledash.schemas import UserCreateFU, UserReadFU, UserUpdateFU
 from collections import defaultdict
 import logging
+from contextlib import asynccontextmanager
+from teledash.db.db_setup import a_engine
+import subprocess
 
 
 logger = logging.getLogger('uvicorn.error')
+
+
+async def run_migrations():
+    """
+    slightly modified https://github.com/sqlalchemy/alembic/discussions/1483
+    problem with command.upgrade in our case is: 
+    /usr/local/lib/python3.10/site-packages/uvicorn/lifespan/on.py:93: RuntimeWarning: coroutine 'run_async_migrations' was never awaited
+    return
+
+    It is supposed to be a warning, so not sure how uvicorn exits.
+    TODO: fix it and do not use subprocess
+    """
+   
+    try:
+        logger.info("Starting database migrations")
+
+        # Run the Alembic upgrade command using subprocess
+        result = subprocess.run(["alembic", "upgrade", "head"], capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.error(f"Alembic upgrade failed: {result.stderr}")
+            raise RuntimeError(f"Alembic upgrade failed: {result.stderr}")
+        
+        logger.info("Database migrations completed successfully")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+        raise
+    finally:
+        # Ensure the engine is disposed
+        await a_engine.dispose()
+        logger.info("Disposed of the engine to close all connections.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.clients = {}
+    app.state.background_tasks = defaultdict(lambda: defaultdict(dict))
+    logger.info("Starting up...")
+    logger.info("run alembic upgrade head...")
+    await run_migrations()
+
+    yield
+    logger.info("Shutting down...")
 
 
 app = FastAPI(
@@ -31,6 +76,7 @@ app = FastAPI(
     license_info={
         "name": "MIT",
     },
+    lifespan=lifespan,
     default_response_class=ORJSONResponse
 )
 app.add_middleware(
@@ -42,13 +88,6 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory="teledash/static"), name="static")
 
-    
-@app.on_event("startup")
-async def startup_event():
-    app.state.clients = {}
-    app.state.background_tasks = defaultdict(lambda: defaultdict(dict))
-    
-    
 app.include_router(ui_home_router, include_in_schema=False)
 app.include_router(ui_clients_router, include_in_schema=False)
 app.include_router(ui_channels_router, include_in_schema=False)

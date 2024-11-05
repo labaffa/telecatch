@@ -12,6 +12,5 @@ WORKDIR /app
 RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
 ADD . /app
-RUN alembic upgrade head
 
 CMD ["uvicorn", "teledash.app:app", "--host",  "0.0.0.0", "--port", "8000", "--workers", "1"]
