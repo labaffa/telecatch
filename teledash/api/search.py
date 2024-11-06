@@ -1,5 +1,5 @@
 import fastapi
-from fastapi import HTTPException, APIRouter, Depends, Query
+from fastapi import HTTPException, APIRouter, Depends, Query, Body
 from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
@@ -9,7 +9,7 @@ import base64
 from typing import Union
 from teledash import schemas as schemas
 from teledash.db import models
-from typing import List
+from typing import List, Literal
 import io
 import pandas as pd
 from dateutil.parser import parse
@@ -23,13 +23,16 @@ from teledash.utils.db import channel as uc
 from teledash.utils.db import user as uu
 from teledash.utils.users import active_user
 from typing_extensions import Annotated
-from pydantic import AfterValidator
+from pydantic import AfterValidator, BaseModel, Field
 import zipfile
 from stat import S_IFREG
 from stream_zip import ZIP_32, async_stream_zip
 import datetime as dt
 from teledash.utils.admin import enc_key_from_cookies
+import logging
 
+
+logger = logging.getLogger('uvicorn.error')
 
 MAX_MSG_CHUNK_SIZE = 1000
 search_router = APIRouter()
@@ -62,26 +65,44 @@ OutFormat = Annotated[
     AfterValidator(lambda x: validate_format(x))
 ]
 
+class SearchParams(BaseModel):
+    q: str | None = Field(Query(..., description='Return only messages that contain this string'))
+    source: str | List[str] = Field (Query(..., description='A collection title or a list of valid channel URL or usernames'))
+    start_date: StrictDate | None = None
+    end_date: StrictDate | None = None
+    chat_type: str | None = None
+    limit: int = 100
+    offset_channel: int = 0
+    offset_id: int = 0
+    client_id: str | None = None  # should change to phone number
+    reverse: bool = False
+    source_type: Literal['collection', 'urls'] = 'urls'
+
+
+class ExportParams(SearchParams):
+    with_media: bool = True
+    messages_chunk_size: int = 1000
+    enrich_messages: bool = True
+    ids: List[int] = Field(Query(default=[], description='List of message ids to query. If present overrides time filters and offsets'))
+    out_format: OutFormat = 'tsv'
+
 
 @search_router.get("/search")
 async def read_search_channel(
     request: fastapi.Request,
-    search: str | None,
-    collection_title: str = None,
-    channel_urls: List[str]=Query(default=[]),
-    start_date: StrictDate=None,
-    end_date: StrictDate=None,
-    chat_type: Union[str, None]=None,
-    limit: int=100, 
-    offset_channel: int=0, 
-    offset_id: int=0,
+    search_params: SearchParams = Depends(),
     db: Session=Depends(get_async_session),
     user: models.User = Depends(active_user),
-    client_id: str | None=None,
-    reverse: bool = False
 ):
+    if search_params.source_type == "collection":
+        collection_title = search_params.source[0]
+    elif search_params.source_type == "urls":
+        collection_title = None
+        channel_urls = search_params.source
+    limit = search_params.limit
     if limit > 100:
         limit = 100
+    client_id = search_params.client_id
     # collection_title overrides channel_urls
     if collection_title is not None:
         collection_in_db = await uc.get_channel_collection(db, user.id, collection_title)
@@ -114,16 +135,16 @@ async def read_search_channel(
         response = await search_all_channels(
             db=db,
             client=tg_client, 
-            search=search,
+            search=search_params.q,
             channel_urls=channel_urls,
-            start_date=start_date,
-            end_date=end_date,
-            chat_type=chat_type,
+            start_date=search_params.start_date,
+            end_date=search_params.end_date,
+            chat_type=search_params.chat_type,
             limit=limit,
-            offset_channel=offset_channel,
-            offset_id=offset_id,
+            offset_channel=search_params.offset_channel,
+            offset_id=search_params.offset_id,
             user_id=user.id,
-            reverse=reverse
+            reverse=search_params.reverse
         )
         return JSONResponse(content=jsonable_encoder(
             response, custom_encoder={
@@ -138,29 +159,27 @@ async def read_search_channel(
 @search_router.get("/export_search")
 async def search_and_export_messages_and_media_to_zip_file(
     request: fastapi.Request,
-    search: str,
-    collection_title: str | None = None,
-    channel_urls: List[str]=Query(default=[]),
-    start_date: StrictDate=None,
-    end_date: StrictDate=None,
-    chat_type: Union[str, None]=None,
-    limit: int=100, 
-    offset_channel: int=0, 
-    offset_id: int=0,
-    out_format: OutFormat="tsv",
+    search_params: ExportParams = Depends(),
     db: Session=Depends(get_async_session),
-    user: models.User = Depends(active_user),
-    client_id = None,
-    with_media: bool=True,
-    reverse: bool=False,
-    messages_chunk_size: int=1000,
-    enrich_messages: bool=True,
-    ids: List[int]=Query(default=[])
+    user: models.User = Depends(active_user)
 ):
+    if search_params.source_type == "collection":
+        collection_title = search_params.source[0]
+    elif search_params.source_type == "urls":
+        collection_title = None
+        channel_urls = search_params.source
+    ids = search_params.ids  # this has real meaning just if querying a single channel_url, since it applies to all channels
+    messages_chunk_size = search_params.messages_chunk_size
+    with_media = search_params.with_media
+    enrich_messages = search_params.enrich_messages
+    out_format = search_params.out_format
     if not len(ids):
         ids = None
     if messages_chunk_size > MAX_MSG_CHUNK_SIZE:
         messages_chunk_size = MAX_MSG_CHUNK_SIZE
+    limit = search_params.limit
+    client_id = search_params.client_id
+    # collection_title overrides channel_urls
     if collection_title is not None:
         collection_in_db = await uc.get_channel_collection(db, user.id, collection_title)
         if not collection_in_db:
@@ -171,7 +190,6 @@ async def search_and_export_messages_and_media_to_zip_file(
                 )
             )
         channel_urls = [x["channel_url"] for x in collection_in_db]
-
     if not client_id:
         client_id = await uu.get_active_client(db, user.id)
     if client_id is None:
@@ -179,7 +197,6 @@ async def search_and_export_messages_and_media_to_zip_file(
             status_code=400,
             detail=f"User {user.username} has not registered Telegram clients"
         )
-    
     tg_client = request.app.state.clients.get(client_id)
     if tg_client is None:
         enc_key = enc_key_from_cookies(request)
@@ -198,17 +215,17 @@ async def search_and_export_messages_and_media_to_zip_file(
         results = download_all_channels_media(
             db=db,
             client=tg_client, 
-            search=search,
+            search=search_params.q,
             channel_urls=channel_urls,
-            start_date=start_date,
-            end_date=end_date,
-            chat_type=chat_type,
+            start_date=search_params.start_date,
+            end_date=search_params.end_date,
+            chat_type=search_params.chat_type,
             limit=limit,
-            offset_channel=offset_channel,
-            offset_id=offset_id,
+            offset_channel=search_params.offset_channel,
+            offset_id=search_params.offset_id,
             with_media=True,
             user_id=user.id,
-            reverse=reverse,
+            reverse=search_params.reverse,
             messages_chunk_size=messages_chunk_size,
             enrich_messages=enrich_messages,
             ids=ids
@@ -280,16 +297,16 @@ async def search_and_export_messages_and_media_to_zip_file(
         results = search_all_channels_generator(
             db=db,
             client=tg_client, 
-            search=search,
+            search=search_params.q,
             channel_urls=channel_urls,
-            start_date=start_date,
-            end_date=end_date,
-            chat_type=chat_type,
+            start_date=search_params.start_date,
+            end_date=search_params.end_date,
+            chat_type=search_params.chat_type,
             limit=limit,
-            offset_channel=offset_channel,
-            offset_id=offset_id,
+            offset_channel=search_params.offset_channel,
+            offset_id=search_params.offset_id,
             user_id=user.id,
-            reverse=reverse,
+            reverse=search_params.reverse,
             enrich_messages=enrich_messages,
             ids=ids
         )
@@ -328,22 +345,20 @@ async def search_and_export_messages_and_media_to_zip_file(
 @search_router.get("/sample")
 async def read_sample_from_channelsl(
     request: fastapi.Request,
-    search: str | None,
-    collection_title: str = None,
-    channel_urls: List[str]=Query(default=[]),
-    start_date: StrictDate=None,
-    end_date: StrictDate=None,
-    chat_type: Union[str, None]=None,
-    limit: int=100, 
-    offset_channel: int=0, 
-    offset_id: int=0,
+    search_params: SearchParams = Depends(),
     db: Session=Depends(get_async_session),
     user: models.User = Depends(active_user),
-    client_id: str | None=None,
-    reverse: bool = False
+    
 ):
+    if search_params.source_type == "collection":
+        collection_title = search_params.source[0]
+    elif search_params.source_type == "urls":
+        collection_title = None
+        channel_urls = search_params.source
+    limit = search_params.limit
     if limit > 100:
         limit = 100
+    client_id = search_params.client_id
     # collection_title overrides channel_urls
     if collection_title is not None:
         collection_in_db = await uc.get_channel_collection(db, user.id, collection_title)
@@ -376,16 +391,16 @@ async def read_sample_from_channelsl(
         response = await sample_from_all_channels(
             db=db,
             client=tg_client, 
-            search=search,
+            search=search_params.q,
             channel_urls=channel_urls,
-            start_date=start_date,
-            end_date=end_date,
-            chat_type=chat_type,
+            start_date=search_params.start_date,
+            end_date=search_params.end_date,
+            chat_type=search_params.chat_type,
             limit=limit,
-            offset_channel=offset_channel,
-            offset_id=offset_id,
+            offset_channel=search_params.offset_channel,
+            offset_id=search_params.offset_id,
             user_id=user.id,
-            reverse=reverse
+            reverse=search_params.reverse
         )
         return JSONResponse(content=jsonable_encoder(
             response, custom_encoder={

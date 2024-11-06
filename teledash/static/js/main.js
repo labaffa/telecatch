@@ -86,12 +86,6 @@ $('#submitButton').on("click", async function() {
   }
   });
 
-/* const submitButton = document.getElementById("submitButton");
-submitButton.addEventListener("click", function() {
-  const value = input.value;
-  callAPI(value);
-});
- */
 
 
 function callAPI(
@@ -114,7 +108,7 @@ function callAPI(
     `;
 
   let queryString = jQuery.param({
-     search: value,
+     q: value,
      limit: limit,
      offset_channel: offset_channel,
      offset_id: offset_id,
@@ -123,7 +117,7 @@ function callAPI(
      chat_type: chat_type,
      country: country,
      client_id: client_id,
-     channel_urls: channel_urls
+     source: channel_urls
     },
     traditional=true
   );
@@ -332,7 +326,7 @@ $('#page-last').click(function(e) {
 
 async function export_search(){
   let queryString = jQuery.param({ 
-    search: window.search, 
+    q: window.search, 
     start_date: window.start_date,
     end_date: window.end_date,
     chat_type: window.chat_type,
@@ -342,7 +336,7 @@ async function export_search(){
     offset_id: 0,
     out_format: window.export_format,
     client_id: window.activeClient.client_id,
-    channel_urls: window.urlsToSearch,
+    source: window.urlsToSearch,
     with_media: window.media
   },
   traditional=true 
@@ -366,7 +360,7 @@ async function export_search(){
 $('#export-messages').click(function(e){
 
   var params = { 
-    search: window.search, 
+    q: window.search, 
     start_date: window.start_date,
     end_date: window.end_date,
     chat_type: window.chat_type,
