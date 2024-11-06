@@ -134,6 +134,123 @@ The web interface allows users to manage and query their Telegram data through a
    - go to the home `http://127.0.0.1:8000/` or click `Home` on the navbar. Use the search bar to query messages within your collections
    - you can filter by dates, group or channel, type of data access (show a sample on the `Results` table or export and download all the messages and images to a tsv file)
 
+### REST API
+
+This section demonstrates how to interact with the TeleCatch REST API using Python.  
+The examples show steps for registering, authenticating, and performing basic operations within TeleCatch.  
+While Python is used here for demonstration purposes, the API can be accessed through any HTTP client or programming language capable of making HTTP requests.
+
+1. **Register a New User**
+   
+   To begin, create a new user by sending a POST request to the `/api/v1/auth/register` endpoint with the required user information.
+
+    ```python
+    import requests
+    
+    domain = "httop://0.0.0.0:8000"   
+    email = "test@example.com"
+    username = "test_user"
+    password = "test_password"
+    
+    data = {
+        "email": email,
+        "username": username,
+        "password": password
+    }
+    
+    session = requests.Session()
+    response = session.post(f"{domain}/api/v1/auth/register", json=data)
+    ```
+
+2. **Log In**
+   
+   Log in with the newly created user credentials by sending a POST request to `/api/v1/auth/login`.
+   Upon success, an access token is returned and used for all subsequent requests (authentication via cookie transport is also available via `/api/v1/cookie/login`)
+
+    ```python
+    login_data = {
+        "username": email,
+        "password": password
+    }
+    
+    response = session.post(f"{domain}/api/v1/auth/login", data=login_data)
+    token = response.json().get("access_token")
+    
+    # Set the token in the session headers
+    session.headers.update({
+        "Authorization": f"Bearer {token}"
+    })
+    ```
+
+3. **Register a Telegram Client**
+   
+   To connect a Telegram client, send a POST request to `/api/v1/clients/register` with the client’s phone number (or bot token), API ID, and API hash.
+
+    ```python
+    client_data = {
+        "phone_or_bot_token": "+34123456789",
+        "api_id": "123456",
+        "api_hash": "f35bd22ef3a1ffd31e1263e8555e39f1"
+    }
+    
+    response = session.post(f"{domain}/api/v1/clients/register", data=client_data)
+    ```
+  
+    If everything goes well, you will receive a log in code from Telegram on your clients (phone, desktop or web app).  
+    Once you have received, it can be used to complete the authentication process:
+    
+    ```python
+    client_data["code"] = 12345
+    response = session.post(f"{domain}/api/v1/clients/register", data=client_data)
+    ```
+
+4. **Set the Client as Active**
+   
+   Retrieve the list of registered clients, then set one as active by passing the client_id in a request to `/api/v1/clients/set_active`.
+   
+    ```python
+    # Get list of registered clients
+    response = session.get(f"{domain}/api/v1/clients/registered")
+    client_id = response.json()[0]["client_id"]
+    
+    # Set the client as active
+    response = session.post(f"{domain}/api/v1/clients/set_active?client_id={client_id}")
+    ```
+
+
+5. **Upload a Collection**
+   
+   To upload a collection file for analysis, use the `/api/v1/collections/item/{title}/from_file` endpoint.
+   Send a file in TSV format for parsing, replacing {title} with a descriptive title for the collection.
+
+    ```python
+    file_path = "/path/to/your/collection_test.tsv"
+    collection_data = {
+        "file": open(file_path, "rb")
+    }
+    title = "sample_collection"
+    response = session.post(f"{domain}/api/v1/collections/item/{title}/from_file", files=collection_data)
+
+    ```
+
+7. **Search the Collection**
+   
+   Perform a search within the uploaded collections by sending a GET request to `/api/v1/search`.
+   Use query parameters to specify search criteria, such as q for the search term, source for the collection, and source_type for the data source.
+   
+     ```python
+     from urllib.parse import urlencode
+  
+      params = {
+          "q": "climate change",
+          "source": "sample_collection",
+          "source_type": "collection"
+      }
+      
+      query_string = urlencode(params)
+      response = session.get(f"http://example.com/api/v1/search?{query_string}")
+  
+     ```
 
 ## Authors and acknowledgment
 
