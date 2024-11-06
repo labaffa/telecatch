@@ -138,7 +138,7 @@ The web interface allows users to manage and query their Telegram data through a
 ## Authors and acknowledgment
 
 
-TeleCatch was developed with support from the CGIAR [Initiative on Fragility, Conflict, and Migration](https://www.cgiar.org/initiative/fragility-conflict-and-migration/) and the CGIAR [Initiative on Climate Resilience, ClimBeR](https://www.cgiar.org/initiative/climate-resilience/). We would like to thank all funders who supported this research through their contributions to the [CGIAR Trust Fund](https://www.cgiar.org/funders/).
+TeleCatch was developed with support from the CGIAR Initiative on Fragility, Conflict, and Migration and the CGIAR Initiative on Climate Resilience, ClimBeR. We would like to thank all funders who supported this research through their contributions to the [CGIAR Trust Fund](https://www.cgiar.org/funders/).
 
 
 
