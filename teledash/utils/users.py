@@ -117,23 +117,29 @@ class UserManager(UUIDIDMixin, BaseUserManager):
         expire = dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=AUTH_EXPIRATION_TIME)
         data["exp"] = expire
         cookie = generate_jwt(data, settings.JWT_SECRET_KEY, lifetime_seconds=AUTH_EXPIRATION_TIME)
-        ff = dict(response.raw_headers)['set-cookie'.encode()].decode().split(";")
         r = {
             "httponly": False,
         }
-        for f in ff:
-            a = f.strip().split("=")
-            if len(a) == 1:
-                if a[0].lower() == 'httponly':
-                    r["httponly"] = True
-            else:
-                match a[0].lower():
-                    case "max-age":
-                        r["max_age"] = a[1]
-                    case "path":
-                        r["path"] = a[1]
-                    case "samesite":
-                        r["samesite"] = a[1]
+        try:
+            ff = dict(response.raw_headers)['set-cookie'.encode()].decode().split(";")
+            for f in ff:
+                a = f.strip().split("=")
+                if len(a) == 1:
+                    if a[0].lower() == 'httponly':
+                        r["httponly"] = True
+                else:
+                    match a[0].lower():
+                        case "max-age":
+                            r["max_age"] = a[1]
+                        case "path":
+                            r["path"] = a[1]
+                        case "samesite":
+                            r["samesite"] = a[1]
+        except KeyError:  # not a cookie tranport login, e.g. a bearer transport
+            r["httponly"] = True
+            r["max_age"] = AUTH_EXPIRATION_TIME
+            r["path"] = "/"
+            r["samesite"] = "lax"
         response.set_cookie(
             'key_hash',
             cookie,
