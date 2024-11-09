@@ -116,7 +116,7 @@ The web interface allows users to manage and query their Telegram data through a
    
     <p align="center"><img src="images/login.png" alt="Login interface" style="dislay: block; width: 90%; margin-left: auto; margin-right: auto;"></p>
     
-   - When first using TeleCatch on your browser, you will be redirected to `http://127.0.0.1:8000/app_login`
+   - When first using TeleCatch on your browser, you will be redirected to `/app_login`
    - Go to `Sign Up` tab and fill in the registration form with a valid email, username and password.
    - If the message for a correct registration is shown, move to `Log In` tab and log in with your credentials.
 
@@ -124,7 +124,7 @@ The web interface allows users to manage and query their Telegram data through a
 
    <p align="center"><img src="images/clients.jpeg" alt="View of the Telegram registration panel" style="dislay: block; width: 90%; margin-left: auto; margin-right: auto;"></p>
     
-   - The authentication process can be done from the `http://127.0.0.1:8000/clients` view, or clicking `Client phone` from the navbar on top.
+   - The authentication process can be done from the `/clients` view, or clicking `Client phone` from the navbar on top.
    - Before being able to authenticate and create a Telegram client, you must have or get your own api_id and api_hash following [Telegram instructions](https://my.telegram.org).
    - After you click on "Register account", wait for a code Telegram will send on your app and insert it. Authentication should be complete.
    - IMPORTANT: disable 2factor authentication from your Telegram app's settings before authentication.
@@ -133,15 +133,34 @@ The web interface allows users to manage and query their Telegram data through a
 
    <p align="center"><img src="images/collections.jpeg" alt="View of Collection page" style="dislay: block; width: 90%; margin-left: auto; margin-right: auto;"></p>
     
-   - go to `http://127.0.0.1:8000/clients` or click  `Active collection` on the navbar
-   - click `Choose file` to upload a csv-like file (.xls, .xlsx, .csv, .tsv) containing the identifiers of the groups and channels of the new collection. A mandatory `url` column must be present: this is the place for urls and/or usernames of groups and channels. Other optional columns are considered: language, location, category
+   - go to `/clients` or click  `Active collection` on the navbar
+   - click `Choose file` to upload a csv-like file (.xls, .xlsx, .csv, .tsv) containing the identifiers of the groups and channels of the new collection (an example can be found in `teledash/data/sample/collection.tsv`)
+
+
+      <div align="center">
+        
+      | url                           | location         | language         | category    |
+      | --------------                | --------------   | --------------   | ---------   |
+      | cnnbrk                        | USA              | english          |  news       |
+      | https://t.me/ilpost_official  | Italy            | italian          |             |
+      | t.me/Espnfc_news              | english          |                  | sport       |
+     
+      </div>
+
+
+       Allowed columns for the spreadsheet are:
+       - **url**: the only required field, it can be of the form of `username`, `t.me/username`, `http://t.me/username`, `telegram.me/username`, `http://telegram.me/username`
+       - **language**: optional, the language of the group or channel
+       - **location**: optional, the location of the group or channel
+       - **category**: optional, a category for the channel (e.g. *news*, *sport*, *finance*)
+    
    - upload the file, choose a title for the collection and save it.
   
 6. Querying Data:
 
    <p align="center"><img src="images/home_search.jpeg" alt="Search example" style="dislay: block; width: 90%; margin-left: auto; margin-right: auto;"></p>
 
-   - go to the home `http://127.0.0.1:8000/` or click `Home` on the navbar. Use the search bar to query messages within your collections
+   - go to the home `/` or click `Home` on the navbar. Use the search bar to query messages within your collections
    - you can filter by dates, group or channel, type of data access (show a sample on the `Results` table or export and download all the messages and images to a tsv file)
 
 ### REST API
