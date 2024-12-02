@@ -290,5 +290,5 @@ TeleCatch was developed with support from the CGIAR Initiative on Fragility, Con
 
 ## License
 
-See the [LICENSE file](https://github.com/labaffa/telecatch?tab=readme-ov-file#license) for license rights and limitations (MIT).
+See the [LICENSE file](https://github.com/labaffa/telecatch/blob/main/LICENSE) for license rights and limitations (MIT).
 
