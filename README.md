@@ -107,9 +107,9 @@ docker run --env-file .env --mount type=bind,source=/absolute/host/path/for/app/
 The app will be accessible at `http://0.0.0.0:8000`.
 
 
-## Usage
+## User Guide
 
-### Web interface
+### Web Interface
 
 The web interface allows users to manage and query their Telegram data through a user-friendly dashboard. Here’s a step-by-step guide on how to get started:
 1. Registration and Login
