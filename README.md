@@ -44,11 +44,11 @@ TeleCatch requires several environment variables to configure encryption and ema
 Required Variables:
 
 ```env
-JWT_SECRET_KE: Hex key (32-bit) used for jwt signature.
-JWT_REFRESH_SECRET_KE: Hex key (32-bit) for refresh jwt signature.
-DATA_SECRET_KEY: Hex key (16-bit) for user data encryption
-MAIL_USERNAME: The email address for sending verification and reset emails.
-MAIL_PASSWORD: Password for the email account.
+JWT_SECRET_KE=Hex key (32-bit) used for jwt signature.
+JWT_REFRESH_SECRET_KE=Hex key (32-bit) for refresh jwt signature.
+DATA_SECRET_KEY=Hex key (16-bit) for user data encryption
+MAIL_USERNAME=The email address for sending verification and reset emails.
+MAIL_PASSWORD=Password for the email account.
 ```
 
 To create a 32-bit and a 16-bit hex key, you can use the openssl command to generate random data:
@@ -72,7 +72,7 @@ alembic upgrade head
 Start the server by running:
 
 ```bash
-uvicorn telecatch.main:app
+uvicorn teledash.main:app
 ```
 
 The app will be accessible at `http://127.0.0.1:8000`.
