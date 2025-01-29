@@ -22,6 +22,7 @@ TeleCatch has the following key features:
 ### Local deployment
 To install and set up TeleCatch, follow the steps below. This project requires Python 3.10 or above, environment variables for configuration, and optionally, Docker for containerized deployment.
 
+
 1. Clone the Repository
 First, clone the repository locally:
 
@@ -29,7 +30,9 @@ First, clone the repository locally:
 git clone https://github.com/labaffa/telecatch.git
 cd telecatch
 ```
+<br/>
 
+    
 2. Install Dependencies
 
 From inside repo folder, via pip:
@@ -37,18 +40,19 @@ From inside repo folder, via pip:
 ``` bash
 pip install -r requirements.txt
 ```
-
+<br/>
+  
 3. Set Up Environment Variables
 TeleCatch requires several environment variables to configure encryption and email functionality. You can add these variables in a .env file in the project root.
 
 Required Variables:
 
 ```env
-JWT_SECRET_KE=Hex key (32-bit) used for jwt signature.
-JWT_REFRESH_SECRET_KE=Hex key (32-bit) for refresh jwt signature.
+JWT_SECRET_KEY=Hex key (32-bit) used for jwt signature
+JWT_REFRESH_SECRET_KEY=Hex key (32-bit) for refresh jwt signature
 DATA_SECRET_KEY=Hex key (16-bit) for user data encryption
-MAIL_USERNAME=The email address for sending verification and reset emails.
-MAIL_PASSWORD=Password for the email account.
+MAIL_USERNAME=The email address for sending verification and reset emails
+MAIL_PASSWORD=Password for the email account
 ```
 
 To create a 32-bit and a 16-bit hex key, you can use the openssl command to generate random data:
@@ -61,6 +65,20 @@ To create a 32-bit and a 16-bit hex key, you can use the openssl command to gene
   ```bash
   openssl rand -hex 16  # Generates a 32-character hex key (16 bytes)
   ```
+
+To create an .env file you can use a text editor (a) or the terminal (b):
+
+  a) Open your preferred text editor, create a new file, paste the 'Required Variables' content into the file, and save the file with the name '.env' in the telecatch project      folder.
+  
+  b) In the terminal, run:  
+      
+     
+     nano .env
+     
+This will open the nano editor, and you should paste the 'Required Variables' content into it. Then, save it and exit. 
+
+<br/>
+  
 4. Run Database Migrations
 Before starting the server, ensure the database schema is up-to-date by running Alembic migrations:
 
@@ -68,14 +86,20 @@ Before starting the server, ensure the database schema is up-to-date by running 
 alembic upgrade head
 ```
 
+<br/>
+
 5. Run TeleCatch
 Start the server by running:
 
 ```bash
-uvicorn teledash.main:app
+uvicorn teledash.app:app
 ```
 
+<br/>
+
 The app will be accessible at `http://127.0.0.1:8000`.
+
+<br/>
 
 ### Using Docker
 If you prefer to run TeleCatch in a Docker container, follow these steps with [docker installed](https://docs.docker.com/engine/install/) :
