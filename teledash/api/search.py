@@ -41,6 +41,8 @@ search_router = APIRouter()
 def validate_date(v):
     if not v or (v == "null"):
         return None
+    if isinstance(v, dt.datetime):
+        return v
     return parse(v)
 
 
@@ -55,7 +57,7 @@ def validate_format(v):
 
 
 StrictDate = Annotated[
-    str | None,
+    str | dt.datetime | None,
     AfterValidator(lambda x: validate_date(x))
 ]
 
