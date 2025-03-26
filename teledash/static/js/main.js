@@ -62,11 +62,7 @@ $('#submitButton').on("click", async function() {
     window.export_format = export_format;
     window.media = export_format == 'zip' ? true : false;
     
-    /* let limit = parseInt($('#inpt_limit').val(), 10) || 100;
-    if (limit > 1000){
-      limit = 1000;
-    } */
-    // Chiamata all'API con il valore dell'input
+    // Call API with input values
     window.tableMessages = [];
     
     let selectedUrls = $('#channels').val();
@@ -143,7 +139,7 @@ function callAPI(
         window.messagesDone = false;
       }
       window.tableMessages.push(...data);
-      // Pulisci la tabella
+      // clean table
       resultTableBody.innerHTML = "";
 
       // Popola la tabella con i risultati
@@ -153,7 +149,6 @@ function callAPI(
         const messageCell = document.createElement("td");
         const timestampCell = document.createElement("td");
         const typeCell = document.createElement("td");
-        // const countryCell = document.createElement("td");
         const viewsCell = document.createElement("td");
 
 
@@ -161,14 +156,12 @@ function callAPI(
         messageCell.textContent = item.message;
         timestampCell.textContent = item.timestamp;
         typeCell.textContent = item.type;
-        // countryCell.textContent = item.country;
         viewsCell.textContent = item.views;
 
         row.appendChild(channelCell);
         row.appendChild(messageCell);
         row.appendChild(timestampCell);
         row.appendChild(typeCell);
-        //row.appendChild(countryCell);
         row.appendChild(viewsCell);
 
         resultTableBody.appendChild(row);
@@ -187,9 +180,7 @@ function callAPI(
 /*  TABLE PAGINATION */
 
 
- // Calcola il numero di pagine e genera i link di paginazione
  function generatePagination(tableSelector, paginationSelector, pageNumber, rowsPerPage=10) {
-    //let totalRows = $(tableSelector + ' tbody tr').length;
     let totalRows = window.tableMessages.length;
     let totalPages = Math.ceil(totalRows / rowsPerPage);
     $('#page-first').hide();
@@ -197,13 +188,13 @@ function callAPI(
     $('#page-up').hide();
     $('#page-last').hide();
     $('#page-number').html(pageNumber);
-    // Aggiungi il pulsante "Pagina precedente" se non è la prima pagina
+    // Add "previous page" button if not first page
     if (pageNumber > 1) {
       $('#page-first').show();
       $('#page-dw').show();
     } 
 
-    // Aggiungi il pulsante "Pagina successiva" se non è l'ultima pagina
+    // Add "next page" button if not last page
     if (pageNumber < totalPages) {
       $('#page-up').show();
       $('#page-last').show();
@@ -225,16 +216,14 @@ function callAPI(
 
 
 }
-// Funzione per mostrare solo le righe desiderate
 function showRows(pageNumber, tableSelector, rowsPerPage=10) {
     let startIndex = (pageNumber - 1) * rowsPerPage;
     let endIndex = startIndex + rowsPerPage;
-    $(tableSelector + ' tbody tr').hide(); // Nasconde tutte le righe
-    $(tableSelector + ' tbody tr').slice(startIndex, endIndex).show(); // Mostra solo le righe della pagina corrente
+    $(tableSelector + ' tbody tr').hide(); 
+    $(tableSelector + ' tbody tr').slice(startIndex, endIndex).show(); // shows only rows of current page
   }
 
 
-// Gestisci il click sui link di paginazione
 $('#page-up').click(function(e) {
     e.preventDefault();
     let page = parseInt($('#results-table').attr('data-page'));
@@ -244,7 +233,6 @@ $('#page-up').click(function(e) {
   });
 
 
-// Gestisci il click sui link di paginazione
 $('#page-dw').click(function(e) {
     e.preventDefault();
     let page = parseInt($('#results-table').attr('data-page'));
@@ -271,58 +259,11 @@ $('#page-last').click(function(e) {
 });
 
   function createEmptyTable(rows) {
-  
-    // Crea le righe vuote
-    for (let i = 0; i < rows; i++) {
+      for (let i = 0; i < rows; i++) {
       let row = resultTableBody.insertRow();
-      // Puoi aggiungere eventuali celle o contenuto alle righe se necessario
     }
   }
 
-
-/* $('#export-messages').click(function(e){
-  var myTableArray = [];
-  var keys = [
-    "username", "message", "timestamp", 
-    "type", "country", "views"
-  ]
-  $("table#results-table tr").each(function() {
-    let arrayOfThisRow = [];
-    let tableData = $(this).find('td');
-    if (tableData.length > 0) {
-        tableData.each(function() {arrayOfThisRow.push($
-          (this).text()); });
-        let objectOfThisRow = Object.fromEntries(
-          keys.map((k, i) => [k, arrayOfThisRow[i]]));
-          
-        myTableArray.push(objectOfThisRow);
-    }});
-  fetch('/api/export_to_csv', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    //body: JSON.stringify(window.tableMessages)
-    body: JSON.stringify(myTableArray)
-  }).then(res => {
-    const disposition = res.headers.get('Content-Disposition');
-    filename = disposition.split(/;(.+)/)[1].split(/=(.+)/)[1];
-    if (filename.toLowerCase().startsWith("utf-8''"))
-        filename = decodeURIComponent(filename.replace("utf-8''", ''));
-    else
-        filename = filename.replace(/['"]/g, '');
-    return res.blob();
-  }).then(blob => {
-    var url = window.URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a); // append the element to the dom
-    a.click();
-    a.remove(); // afterwards, remove the element  
-  });
-
-}); */
 
 async function export_search(){
   let queryString = jQuery.param({ 
@@ -342,17 +283,9 @@ async function export_search(){
   traditional=true 
   );
   var url = new URL('/api/v1/export_search', window.location.origin);
-  //url.search = new URLSearchParams(params).toString();
   url.search = queryString;
   window.open(url, "_blank");
-  
-  // fetch(`/api/stream_search?${queryString}`, {
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'Cache-Control': 'no-cache',
-  //   'Connection': 'keep-alive'
-  //   }
-  // })
+
 };
 
 
@@ -379,30 +312,7 @@ $('#export-messages').click(function(e){
     'Connection': 'keep-alive'
     }
   })
-  // .then(res => {
-  //   const disposition = res.headers.get('Content-Disposition');
-  //   filename = disposition.split(/;(.+)/)[1].split(/=(.+)/)[1];
-  //   if (filename.toLowerCase().startsWith("utf-8''"))
-  //       filename = decodeURIComponent(filename.replace("utf-8''", ''));
-  //   else
-  //       filename = filename.replace(/['"]/g, '');
-  //   const fileStream = streamSaver.createWriteStream(filename)
-  //   // more optimized
-  //   /* if (window.WritableStream && readableStream.pipeTo) {
-  //     return readableStream.pipeTo(fileStream)
-  //       .then(() => console.log('done writing'))
-  //   } */
-
-  //   window.writer = fileStream.getWriter()
-
-  //   const reader = res.body.getReader()
-  //   const pump = () => reader.read()
-  //     .then(res => res.done
-  //       ? writer.close()
-  //       : writer.write(res.value).then(pump))
-
-  //   pump()
-  // })
+  
 });
 
 async function fillChatInfo(eleId, chatType){
@@ -418,7 +328,6 @@ async function fillChatInfo(eleId, chatType){
       })
     )
     window.channelsInfo.data.forEach((channel) => {
-      // Crea un'opzione con il valore e il testo dell'oggetto
       if (channel.type == chatType) {
         select.append(
           $('<option>', {
@@ -517,7 +426,6 @@ function initChatGroupsSelect(eleId){
     return {"label": channel.url, "value": channel.url}
   })
 
-  // placeHolder = `-- ${placeHolder} [${options.length}] --`
   VirtualSelect.init({
     ele: eleId,
     options: [
@@ -559,10 +467,7 @@ async function updateMonitor(){
       ).then(response => response.json()
       ).then(data => {
         window.channelsInfo = data;
-        // fillChatInfo('#channels', 'channel');
-        // fillChatInfo('#groups', 'group');
-        // initChatSelect('#channels', 'channel', 'Channels');
-        // initChatSelect('#groups', 'group', 'Groups')
+        
         if (!$('#channels').prop('options')){
           initChatGroupsSelect('#channels')
         }
@@ -573,88 +478,6 @@ async function updateMonitor(){
 };
   
 
-// $('#add-chat-btn').click(function(e){
-  
-//   let identifier = $('#add-chat').val();
-//   var resp_ok;
-//     fetch('/api/channel', {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json'
-//       },
-//       //body: JSON.stringify(window.tableMessages)
-//       body: JSON.stringify({
-//         "identifier": identifier
-//       })
-//     })
-//     .then( (response) => {
-//       resp_ok = response.ok;
-//       return response.json();
-      
-//     })
-//     .then( (data) => {
-//       if (resp_ok) {
-//         fetch('/api/update_chat', {
-//           method: 'PUT',
-//           headers: {
-//             'Content-Type': 'application/json'
-//           },
-//           body: JSON.stringify({
-//             "identifier": identifier
-//           })
-//         })
-//         .then( (count_resp) => {
-//           updateMonitor();
-//           return data;
-//         });
-      
-//       }
-//       else {
-//         throw new Error(data.detail);
-//       }
-//     })
-//     .catch( (error) => {
-//       console.log(error)
-//       alert(error)
-//     })
-//   }
-// );
-
-
-// $('#remove-chat-btn').click(function(e){
-  
-//   let identifier = $('#remove-chat').val();
-//   var resp_ok;
-//     fetch('/api/channel', {
-//       method: 'DELETE',
-//       headers: {
-//         'Content-Type': 'application/json'
-//       },
-//       //body: JSON.stringify(window.tableMessages)
-//       body: JSON.stringify({
-//         "identifier": identifier
-//       })
-//     })
-//     .then( (response) => {
-//       resp_ok = response.ok;
-//       return response.json();
-      
-//     })
-//     .then( (data) => {
-//       if (resp_ok) {
-//         updateMonitor();
-//         return data;
-//       }
-//       else {
-//         throw new Error(data.detail);
-//       }
-//     })
-//     .catch( (error) => {
-//       console.log(error)
-//       alert(error)
-//     })
-//   }
-// );
 
 function monthDiff(d1, d2) {
   let months;
@@ -665,7 +488,6 @@ function monthDiff(d1, d2) {
 }
 
 function createHistogramFromMessages(data) {
-  // Imposta le dimensioni del grafico
   const width = 400;
   const height = 300;
   const margin = { top: 20, right: 30, bottom: 30, left: 40 };
@@ -719,8 +541,7 @@ function createHistogramFromMessages(data) {
       .call(d3.axisLeft(y));
 
 
-  // Aggiungi le barre all'istogramma
-
+  // Add bars to histogram
   
   svg.selectAll('rect')
     .data(bins)
@@ -742,34 +563,12 @@ function createHistogramFromMessages(data) {
   )
 
   
-  /* svg_caption = d3.select('#histo-caption').selectAll("*").remove();
-  svg_caption = d3.select("#histo-caption")
-    .append("svg")
-        //.attr("width", (width + margin.left + margin.right)/4)
-        .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-        .attr("transform",
-          "translate(" + margin.left + "," + margin.top + ")");
-    
-  svg_caption.append("text")
-      .text(`Total messages: ${data.length}` + "\n" +
-
-        + `Group messages: ${window.tableMessages.reduce((acc, x) => x['chat_type'] === 'group' ? acc + 1 : acc, 0)}`
-        + "\n" + `Channel messages: ${window.tableMessages.reduce((acc, x) => x['chat_type'] === 'channel' ? acc + 1 : acc, 0)}`)
-      .attr("x",  1)
-      //.attr("text-anchor", "end")
-      .attr("y",  1); */
-  
 };
 
 
 $(document).ready(function() {
-  // Inizializza la paginazione
-  // generatePagination(tableSelector, paginationSelector, 1, rowsPerPage);
-  // showRows(1, tableSelector, rowsPerPage);
   createEmptyTable(rowsPerPage);
   updateMonitor();
-  
   window.setInterval(updateMonitor, 60*60*1000);
   
 });
