@@ -14,3 +14,46 @@
 	justify-content: center;
 }
 
+.phone-number {
+    padding: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+  
+.phone-number:hover {
+    background-color: rgb(188,218,233);
+    color: rgb(29, 48, 82);
+    border-radius: 5px;
+
+}
+/* .phone-number:hover .change-icon {
+    display: inline;
+    margin-left: 10x;
+    font-size: 1.1em;
+    
+  } */
+
+.phone-number.active {
+    background-color: rgb(48,80,136);
+    color: white;
+    font-weight: bold;
+    border-radius: 5px;
+}
+
+
+/* .clients-list {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+  } */
+  
+/* .clients-list li {
+    width: 100%;
+    box-sizing: border-box;
+} */
+
+
+.clients-list {
+    display: grid;
+    grid-template-columns: max-content; /* columns adapt to widest content */
+  }
