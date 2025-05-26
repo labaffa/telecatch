@@ -66,6 +66,10 @@ class Message(BaseModel):
     media_type: Union[str, None] = None
     media_description: Union[str, None] = None
     media_filename: Union[str, None] = None
+    media_title: str | None = None
+    media_description: str | None = None
+    media_url: str | None = None
+    hyperlinks: str | None = None
     author_type: Optional[int]
     author_id: Optional[int]
     author_username: Optional[str]
@@ -78,6 +82,7 @@ class Message(BaseModel):
     fwd_from_author_id: Optional[int]
     fwd_from_author_username: Optional[str]
     fwd_from_author_name: Optional[str]
+
 
 
 # login
