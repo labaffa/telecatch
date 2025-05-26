@@ -84,7 +84,11 @@ def parse_raw_message(message):
         "fwd_from_author_id": message.get(
             "fwd_from_author", {}).get("author_id"),
         "media_type": message.get("media_type"),
-        "media_filename": message.get("media_filename")
+        "media_filename": message.get("media_filename"),
+        "media_description": message.get("media_description"),
+        "media_title": message.get("media_title"),
+        "media_url": message.get("media_url"),
+        "hyperlinks": message.get("hyperlinks")
     }
 
 
@@ -205,12 +209,27 @@ async def parse_message_media(message_media):
     if media_type == "webpage":
         if message_media.to_dict()["webpage"].get("type", "") != "photo":
             media_type = None
-    # title = message_media.to_dict().get(media_type, {}).get("title")
+    title = message_media.to_dict().get(media_type, {}).get("title")
     description = message_media.to_dict().get(media_type, {}).get("description")
+    url = message_media.to_dict().get(media_type, {}).get("url")
     return {
+        "media_title": title,
         "media_description": description,
-        "media_type": media_type
+        "media_type": media_type,
+        "media_url": url
     }
+
+
+async def parse_message_attributes(message):
+    hyperlinks = []
+    if not message.get("entities"):
+        return {}
+    for e in message.get("entities", []):
+        if e["_"] == "MessageEntityTextUrl":
+            hyperlinks.append(e["url"])
+    hyperlinks = json.dumps(hyperlinks) if hyperlinks else None
+    return {"hyperlinks": hyperlinks}
+
 
 
 async def search_all_channels(
@@ -401,6 +420,8 @@ async def search_all_channels_generator(
                 message_d["country"] = channel_info.get("location")
                 message_d["category"] = channel_info.get("category")
                 message_d["language"] = channel_info.get("language")
+                attributes = await parse_message_attributes(message_d)
+                message_d["hyperlinks"] = attributes.get("hyperlinks")
                 media_metadata = dict(zip(
                     ["media_type", "media_description", "media_filename"], [None]*3
                 ))
