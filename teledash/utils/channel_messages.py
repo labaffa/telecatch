@@ -143,9 +143,11 @@ async def search_single_channel_batch(
     entity = await util_channels.get_input_entity(client, channel_info)
     # this is added because telegram api don't seem to work with offset_date and reverse
     # but it's not optimal at all, when reverse and start_date. we could do:
-    # 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
+    # TODO: 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
     # one message to get the message id, and than pass the min/max_id in actual query
     offset_date = None if reverse else end_date
+    if offset_date:  # add one day because offset_date is exclusive for telegram API
+        offset_date = offset_date + dt.timedelta(days=1)
     
     async for message in client.iter_messages(
         entity, 
@@ -371,7 +373,9 @@ async def search_all_channels_generator(
     # but it's not optimal at all, when reverse and start_date. we could do:
     # 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
     # one message to get the message id, and than pass the min/max_id in actual query
-    offset_date = None if reverse else end_date
+    offset_date = None if reverse else end_date 
+    if offset_date:
+        offset_date = offset_date + dt.timedelta(days=1)
     for channel_info in all_channels[offset_channel:]:
         channel_info = dict(channel_info)
 
@@ -536,6 +540,8 @@ async def download_all_channels_media(
             # 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
             # one message to get the message id, and than pass the min/max_id in actual query
             offset_date = None if reverse else end_date
+            if offset_date:
+                offset_date = offset_date + dt.timedelta(days=1)
             async for message in client.iter_messages(
                 entity, 
                 search=search, 
@@ -819,6 +825,8 @@ async def search_single_channel_batch_trycatch(
         # 1. ask in non reverse mode with offset_date = start_date (+ something) for just 
         # one message to get the message id, and than pass the min/max_id in actual query
         offset_date = None if reverse else end_date
+        if offset_date:
+            offset_date = offset_date + dt.timedelta(days=1)
         
         async for message in client.iter_messages(
             entity, 
