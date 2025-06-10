@@ -103,26 +103,44 @@ function callAPI(
     </div>
     `;
 
-  let queryString = jQuery.param({
-     q: value,
-     limit: limit,
-     offset_channel: offset_channel,
-     offset_id: offset_id,
-     start_date: start_date,
-     end_date: end_date,
-     chat_type: chat_type,
-     country: country,
-     client_id: client_id,
-     source: channel_urls
-    },
-    traditional=true
-  );
+  // let queryString = jQuery.param({
+  //    q: value,
+  //    limit: limit,
+  //    offset_channel: offset_channel,
+  //    offset_id: offset_id,
+  //    start_date: start_date,
+  //    end_date: end_date,
+  //    chat_type: chat_type,
+  //    country: country,
+  //    client_id: client_id,
+  //    source: channel_urls
+  //   },
+  //   traditional=true
+  // );
+
+  const requestBody = {
+    q: value,
+    limit: limit,
+    offset_channel: offset_channel,
+    offset_id: offset_id,
+    start_date: start_date,
+    end_date: end_date,
+    chat_type: chat_type,
+    country: country,
+    client_id: client_id,
+    source: channel_urls  // Può essere una stringa o un array
+};
+  console.log(JSON.stringify(requestBody))
   fetch(
-    `${endpoint}?${queryString}`,
+    `${endpoint}`,
     {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json', 
           'Cache-Control': 'no-cache'
-        }}
+        },
+        body: JSON.stringify(requestBody)
+    }
     )
     .then((response) => {
       if (response.ok) {
@@ -265,9 +283,35 @@ $('#page-last').click(function(e) {
   }
 
 
-async function export_search(){
-  let queryString = jQuery.param({ 
-    q: window.search, 
+// async function export_search(){
+//   let queryString = jQuery.param({ 
+//       q: window.search, 
+//       start_date: window.start_date,
+//       end_date: window.end_date,
+//       chat_type: window.chat_type,
+//       country: window.country,
+//       limit: -1,
+//       offset_channel: 0,
+//       offset_id: 0,
+//       out_format: window.export_format,
+//       client_id: window.activeClient.client_id,
+//       source: window.urlsToSearch,
+//       with_media: window.media
+//   },
+  
+
+//     traditional=true 
+//   );
+
+//   var url = new URL('/api/v1/export_search', window.location.origin);
+//   url.search = queryString;
+//   window.open(url, "_blank");
+
+// };
+
+function export_search() {
+  const payload = {
+    q: window.search,
     start_date: window.start_date,
     end_date: window.end_date,
     chat_type: window.chat_type,
@@ -279,15 +323,30 @@ async function export_search(){
     client_id: window.activeClient.client_id,
     source: window.urlsToSearch,
     with_media: window.media
-  },
-  traditional=true 
-  );
-  var url = new URL('/api/v1/export_search', window.location.origin);
-  url.search = queryString;
-  window.open(url, "_blank");
+  };
 
-};
+  // Crea un form invisibile
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = "/api/v1/export_search";
+  form.target = "_blank";
+  form.style.display = "none";
 
+  // Aggiungi i dati come input nascosti
+  for (const key in payload) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = key;
+    input.value = typeof payload[key] === "object"
+      ? JSON.stringify(payload[key])
+      : payload[key];
+    form.appendChild(input);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
 
 
 $('#export-messages').click(function(e){

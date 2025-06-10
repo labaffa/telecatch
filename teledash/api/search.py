@@ -1,12 +1,12 @@
 import fastapi
-from fastapi import HTTPException, APIRouter, Depends, Query, Body
+from fastapi import HTTPException, APIRouter, Depends, Query, Body, Form
 from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from teledash.utils.channel_messages import search_all_channels, \
     search_all_channels_generator, download_all_channels_media, sample_from_all_channels
 import base64
-from typing import Union
+from typing import Union, Optional
 from teledash import schemas as schemas
 from teledash.db import models
 from typing import List, Literal
@@ -68,8 +68,8 @@ OutFormat = Annotated[
 ]
 
 class SearchParams(BaseModel):
-    q: str | None = Field(Query(..., description='Return only messages that contain this string'))
-    source: str | List[str] = Field (Query(..., description='A collection title or a list of valid channel URL or usernames'))
+    q: str | None = Field(..., description='Return only messages that contain this string')
+    source: str | List[str] = Field (..., description='A collection title or a list of valid channel URL or usernames')
     start_date: StrictDate | None = None
     end_date: StrictDate | None = None
     chat_type: str | None = None
@@ -81,18 +81,56 @@ class SearchParams(BaseModel):
     source_type: Literal['collection', 'urls'] = 'urls'
 
 
-class ExportParams(SearchParams):
-    with_media: bool = True
-    messages_chunk_size: int = 1000
-    enrich_messages: bool = True
-    ids: List[int] = Field(Query(default=[], description='List of message ids to query. If present overrides time filters and offsets'))
-    out_format: OutFormat = 'tsv'
+# class ExportParams(SearchParams):
+#     with_media: bool = True
+#     messages_chunk_size: int = 1000
+#     enrich_messages: bool = True
+#     ids: List[int] = Field(default=[], description='List of message ids to query. If present overrides time filters and offsets')
+#     out_format: OutFormat = 'tsv'
 
 
-@search_router.get("/search")
+class ExportParams:
+    def __init__(
+        self,
+        q: Optional[str] = Form(None),
+        source: str = Form(...),
+        start_date: Optional[StrictDate] = Form(None),
+        end_date: Optional[StrictDate] = Form(None),
+        chat_type: Optional[str] = Form(None),
+        limit: int = Form(100),
+        offset_channel: int = Form(0),
+        offset_id: int = Form(0),
+        client_id: Optional[str] = Form(None),
+        reverse: bool = Form(False),
+        source_type: str = Form('urls'),
+        with_media: bool = Form(True),
+        messages_chunk_size: int = Form(1000),
+        enrich_messages: bool = Form(True),
+        ids: Optional[str] = Form("[]"),
+        out_format: str = Form("tsv"),
+    ):
+        self.q = q
+        self.source = json.loads(source) if source.startswith("[") else source
+        self.start_date = start_date
+        self.end_date = end_date
+        self.chat_type = chat_type
+        self.limit = limit
+        self.offset_channel = offset_channel
+        self.offset_id = offset_id
+        self.client_id = client_id
+        self.reverse = reverse
+        self.source_type = source_type
+        self.with_media = with_media
+        self.messages_chunk_size = messages_chunk_size
+        self.enrich_messages = enrich_messages
+        self.ids = json.loads(ids)
+        self.out_format = out_format
+
+
+@search_router.post("/search")
 async def read_search_channel(
     request: fastapi.Request,
-    search_params: SearchParams = Depends(),
+    search_params: SearchParams,
     db: Session=Depends(get_async_session),
     user: models.User = Depends(active_user),
 ):
@@ -158,7 +196,7 @@ async def read_search_channel(
         )
 
 
-@search_router.get("/export_search")
+@search_router.post("/export_search")
 async def search_and_export_messages_and_media_to_zip_file(
     request: fastapi.Request,
     search_params: ExportParams = Depends(),
@@ -316,7 +354,7 @@ async def search_and_export_messages_and_media_to_zip_file(
         async def _encoded_results():
             fieldnames = schemas.Message.__fields__.keys()
             stream = io.StringIO()
-            writer = csv.DictWriter(stream, fieldnames=fieldnames, delimiter="\t")
+            writer = csv.DictWriter(stream, fieldnames=fieldnames, delimiter="\t", extrasaction='ignore')
             if out_format == "tsv":
                 writer.writeheader()
                 yield stream.getvalue()
@@ -344,10 +382,10 @@ async def search_and_export_messages_and_media_to_zip_file(
         )
 
 
-@search_router.get("/sample")
+@search_router.post("/sample")
 async def read_sample_from_channelsl(
     request: fastapi.Request,
-    search_params: SearchParams = Depends(),
+    search_params: SearchParams,
     db: Session=Depends(get_async_session),
     user: models.User = Depends(active_user),
     
