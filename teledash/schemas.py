@@ -59,9 +59,9 @@ class Message(BaseModel):
     message: str
     timestamp: str
     type: str
-    country: Union[str, None]
-    language: Union[str, None]
-    category: Union[str, None]
+    # country: Union[str, None]
+    # language: Union[str, None]
+    # category: Union[str, None]
     views: Union[StringInt, None]
     media_type: Union[str, None] = None
     media_description: Union[str, None] = None
